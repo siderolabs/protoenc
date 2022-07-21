@@ -1,0 +1,23 @@
+# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
+#
+# Generated on 2022-07-21T21:54:08Z by kres latest.
+
+**
+!array_test.go
+!benchmarks_test.go
+!example_test.go
+!field_test.go
+!generated_message_test.go
+!helpers_test.go
+!main_test.go
+!map_test.go
+!marshal.go
+!marshal_test.go
+!person_test.go
+!predefined_types.go
+!protobuf_test.go
+!type_cache.go
+!unmarshal.go
+!go.mod
+!go.sum
+!.golangci.yml
