@@ -1,0 +1,9 @@
+---
+kind: golang.Generate
+spec:
+  vtProtobufEnabled: false
+  baseSpecPath: /messages/
+  specs:
+    - source: /messages/messages.proto
+      genGateway: false
+      external: false

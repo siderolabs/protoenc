@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-07-22T07:58:20Z by kres c84ca98-dirty.
+# Generated on 2022-07-26T15:06:36Z by kres latest.
 
 # common variables
 
@@ -111,6 +111,9 @@ fmt:  ## Formats the source code
 
 lint-goimports:  ## Runs goimports linter.
 	@$(MAKE) target-$@
+
+generate:  ## Generate .proto definitions.
+	@$(MAKE) local-$@ DEST=./
 
 .PHONY: base
 base:  ## Prepare base toolchain

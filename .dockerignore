@@ -1,8 +1,9 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-07-21T21:54:08Z by kres latest.
+# Generated on 2022-07-26T15:06:36Z by kres latest.
 
 **
+!messages
 !array_test.go
 !benchmarks_test.go
 !example_test.go

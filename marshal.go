@@ -98,19 +98,28 @@ func (m *marshaller) encodeFields(val reflect.Value, fieldsData []FieldData) {
 	noneEncoded := true
 
 	for _, fieldData = range fieldsData {
-		field := val.FieldByIndex(fieldData.FieldIndex)
-		num := fieldData.Num
+		field := fieldByIndex(val, fieldData)
 
-		if field.CanSet() {
-			m.encodeValue(num, field)
+		if field.IsValid() {
+			m.encodeValue(fieldData.Num, field)
 
 			noneEncoded = false
 		}
 	}
 
 	if noneEncoded {
-		panic("struct has no marshallable fields")
+		panic(fmt.Errorf("struct '%s' has no marshallable fields", val.Type().Name()))
 	}
+}
+
+// fieldByIndex returns the field of the struct by its index if the field is exported.
+// Otherwise, it returns empty reflect.Value.
+func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
+	if data.Field.IsExported() && structVal.IsValid() {
+		return structVal.FieldByIndex(data.FieldIndex)
+	}
+
+	return reflect.Value{}
 }
 
 //nolint:cyclop

@@ -1,0 +1,30 @@
+syntax = "proto3";
+package specs;
+
+option go_package = "github.com/siderolabs/protoenc/messages";
+
+message BasicMessage {
+  int64 int64 = 1;
+  uint64 u_int64 = 3;
+  fixed64 fixed64 = 5;
+  string some_string = 6;
+  bytes some_bytes = 7;
+}
+
+message MessageRepeatedFields {
+  repeated int64 int64 = 1;
+  repeated uint64 u_int64 = 3;
+  repeated fixed64 fixed64 = 5;
+  repeated string some_string = 6;
+  repeated bytes some_bytes = 7;
+}
+
+message BasicMessageRep {
+  repeated BasicMessage basic_message = 1;
+}
+
+message MessageComplexFields {
+  map<string, BasicMessage> mapToMsg = 1;
+  map<string, BasicMessageRep> mapToMsgs = 2;
+  map<string, int64> primitiveMap = 3;
+}
