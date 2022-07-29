@@ -115,11 +115,23 @@ func (m *marshaller) encodeFields(val reflect.Value, fieldsData []FieldData) {
 // fieldByIndex returns the field of the struct by its index if the field is exported.
 // Otherwise, it returns empty reflect.Value.
 func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
-	if data.Field.IsExported() && structVal.IsValid() {
-		return structVal.FieldByIndex(data.FieldIndex)
+	if !structVal.IsValid() || !data.Field.IsExported() || len(data.FieldIndex) == 0 {
+		return reflect.Value{}
 	}
 
-	return reflect.Value{}
+	var result reflect.Value
+
+	for i := 0; i < len(data.FieldIndex); i++ {
+		index := data.FieldIndex[:i+1]
+
+		result = structVal.FieldByIndex(index)
+		if len(data.FieldIndex) > 1 && result.Kind() == reflect.Ptr && result.IsNil() {
+			// Embedded field is nil, return empty reflect.Value. Avo
+			return reflect.Value{}
+		}
+	}
+
+	return result
 }
 
 //nolint:cyclop

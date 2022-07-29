@@ -63,6 +63,24 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 			continue
 		}
 
+		if typField.Anonymous {
+			if deref(typField.Type).Kind() != reflect.Struct {
+				return nil, fmt.Errorf("%s.%s.%s is not a struct type", typ.PkgPath(), typ.Name(), typField.Name)
+			}
+
+			fields, err := structFields(typField.Type)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, innerField := range fields {
+				innerField.FieldIndex = append([]int{i}, innerField.FieldIndex...)
+				result = append(result, innerField)
+			}
+
+			continue
+		}
+
 		num := ParseTag(typField)
 		switch num {
 		case 0:
@@ -74,23 +92,15 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 			return nil, fmt.Errorf("%s.%s.%s has invalid protobuf tag", typ.PkgPath(), typ.Name(), typField.Name)
 		}
 
-		if typField.Anonymous {
-			fields, err := structFields(typField.Type)
-			if err != nil {
-				return nil, err
-			}
+		result = append(result, FieldData{
+			Num:        protowire.Number(num),
+			FieldIndex: []int{i},
+			Field:      typField,
+		})
+	}
 
-			for _, innerField := range fields {
-				innerField.FieldIndex = append([]int{i}, innerField.FieldIndex...)
-				result = append(result, innerField)
-			}
-		} else {
-			result = append(result, FieldData{
-				Num:        protowire.Number(num),
-				FieldIndex: []int{i},
-				Field:      typField,
-			})
-		}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("%s.%s has no exported fields", typ.PkgPath(), typ.Name())
 	}
 
 	return result, nil

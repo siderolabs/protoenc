@@ -55,8 +55,8 @@ func TestEncodeNested(t *testing.T) {
 
 //nolint:govet
 type StructWithEmbed struct {
-	A            int32 `protobuf:"1"`
-	*EmbedStruct `protobuf:"2"`
+	A int32 `protobuf:"1"`
+	*EmbedStruct
 }
 
 type EmbedStruct struct {
