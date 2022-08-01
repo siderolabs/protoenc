@@ -7,6 +7,8 @@ package protoenc_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/siderolabs/protoenc"
 )
 
@@ -41,5 +43,35 @@ func BenchmarkEncode(b *testing.B) {
 		}
 
 		Store = result
+	}
+}
+
+func BenchmarkCustom(b *testing.B) {
+	b.Cleanup(func() {
+		protoenc.CleanEncoderDecoder()
+	})
+
+	o := OneFieldStruct[CustomEncoderStruct]{
+		Field: CustomEncoderStruct{
+			Value: 150,
+		},
+	}
+
+	protoenc.RegisterEncoderDecoder(encodeCustomEncoderStruct, decodeCustomEncoderStruct)
+
+	encoded, err := protoenc.Marshal(&o)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	target := &OneFieldStruct[CustomEncoderStruct]{}
+	for i := 0; i < b.N; i++ {
+		*target = OneFieldStruct[CustomEncoderStruct]{}
+
+		err := protoenc.Unmarshal(encoded, target)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }

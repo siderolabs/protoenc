@@ -65,6 +65,15 @@ func (u *unmarshaller) unmarshalStruct(buf []byte, structVal reflect.Value) erro
 
 	zeroStructFields(structVal)
 
+	ok, err := tryDecodeFunc(buf, structVal)
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		return nil
+	}
+
 	structFields, err := StructFields(structVal.Type())
 	if err != nil {
 		return err
@@ -390,6 +399,19 @@ func (u *unmarshaller) putInto(dst reflect.Value, wiretype protowire.Type, v uin
 	}
 
 	return nil
+}
+
+func tryDecodeFunc(vb []byte, dst reflect.Value) (bool, error) {
+	dec, ok := decoders.Get(dst.Type())
+	if !ok {
+		return false, nil
+	}
+
+	if err := dec(vb, dst); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func decodeSignedInt(wiretype protowire.Type, v uint64) (int64, error) {

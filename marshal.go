@@ -70,6 +70,13 @@ func (m *marshaller) encodeStruct(val reflect.Value) {
 		panic("encodeStruct takes a struct")
 	}
 
+	res, ok := tryEncodeFunc(val)
+	if ok {
+		m.buf = append(m.buf, res...)
+
+		return
+	}
+
 	structFields, err := StructFields(val.Type())
 	if err != nil {
 		panic(err)
@@ -281,6 +288,22 @@ func (m *marshaller) tryEncodePredefined(num protowire.Number, val reflect.Value
 	}
 
 	return true
+}
+
+func tryEncodeFunc(val reflect.Value) ([]byte, bool) {
+	typ := val.Type()
+
+	enc, ok := encoders.Get(typ)
+	if !ok {
+		return nil, false
+	}
+
+	b, err := enc(val.Interface())
+	if err != nil {
+		panic(err)
+	}
+
+	return b, true
 }
 
 func asBinaryMarshaler(val reflect.Value) (encoding.BinaryMarshaler, bool) {

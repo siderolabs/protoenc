@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
+	"unsafe"
 
 	"google.golang.org/protobuf/encoding/protowire"
 )
@@ -147,21 +148,84 @@ func ParseTag(field reflect.StructField) int {
 	return num
 }
 
-var cache = typesCache{}
-
-type typesCache struct {
+type syncMap[K, V any] struct {
 	m sync.Map
 }
 
-func (tc *typesCache) Get(t reflect.Type) ([]FieldData, bool) {
-	value, ok := tc.m.Load(t)
+func (sm *syncMap[K, V]) Get(k K) (V, bool) {
+	value, ok := sm.m.Load(k)
 	if !ok {
-		return nil, false
+		var zero V
+
+		return zero, false
 	}
 
-	return value.([]FieldData), true //nolint:forcetypeassert
+	return value.(V), true //nolint:forcetypeassert
 }
 
-func (tc *typesCache) Add(t reflect.Type, structFields []FieldData) {
-	tc.m.Store(t, structFields)
+func (sm *syncMap[K, V]) Add(k K, v V) {
+	sm.m.Store(k, v)
+}
+
+var (
+	cache    = syncMap[reflect.Type, []FieldData]{}
+	encoders = syncMap[reflect.Type, encoder]{}
+	decoders = syncMap[reflect.Type, decoder]{}
+)
+
+type (
+	encoder func(any) ([]byte, error)
+	decoder func(slc []byte, dst reflect.Value) error
+)
+
+// RegisterEncoderDecoder registers the given encoder and decoder for the given type. T should be struct or
+// pointer to struct. T and pointer to T are treated the same.
+func RegisterEncoderDecoder[T any, Enc func(T) ([]byte, error), Dec func([]byte) (T, error)](enc Enc, dec Dec) {
+	var zero T
+
+	typ := deref(reflect.TypeOf(zero))
+	if typ.Kind() != reflect.Struct {
+		panic("RegisterEncoderDecoder: T must be a struct")
+	}
+
+	fnEnc := func(val any) ([]byte, error) {
+		v, ok := val.(T)
+		if !ok {
+			return nil, fmt.Errorf("%T is not %T", val, zero)
+		}
+
+		return enc(v)
+	}
+
+	fnDec := func(b []byte, dst reflect.Value) error {
+		if dst.Type() != typ {
+			return fmt.Errorf("%T is not %T", dst, zero)
+		}
+
+		v, err := dec(b)
+		if err != nil {
+			return err
+		}
+
+		*(*T)(unsafe.Pointer(dst.UnsafeAddr())) = v
+
+		return nil
+	}
+
+	if _, ok := encoders.Get(typ); ok {
+		panic("RegisterEncoderDecoder: encoder for type " + typ.String() + " already registered")
+	}
+
+	if _, ok := decoders.Get(typ); ok {
+		panic("RegisterEncoderDecoder: decoder for type " + typ.String() + " already registered")
+	}
+
+	encoders.Add(typ, fnEnc)
+	decoders.Add(typ, fnDec)
+}
+
+// CleanEncoderDecoder cleans the map of encoders and decoders. It's not safe to it call concurrently.
+func CleanEncoderDecoder() {
+	encoders = syncMap[reflect.Type, encoder]{}
+	decoders = syncMap[reflect.Type, decoder]{}
 }

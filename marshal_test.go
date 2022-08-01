@@ -8,6 +8,7 @@ import (
 	"encoding"
 	"encoding/hex"
 	"math/big"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -448,4 +449,130 @@ func makeIncorrectEmbedTest[V any](v V) func(t *testing.T) {
 
 		require.Error(t, err)
 	}
+}
+
+func TestCustomEcnoders(t *testing.T) {
+	tests := map[string]struct {
+		fn func(t *testing.T)
+	}{
+		"should use custom encoder": {
+			testCustomEncodersDecoders(
+				encodeCustomEncoderStruct,
+				decodeCustomEncoderStruct,
+				OneFieldStruct[CustomEncoderStruct]{
+					Field: CustomEncoderStruct{
+						Value: 150,
+					},
+				},
+				OneFieldStruct[CustomEncoderStruct]{
+					Field: CustomEncoderStruct{
+						Value: 152,
+					},
+				},
+			),
+		},
+		"should use custom encoder on pointer": {
+			testCustomEncodersDecoders(
+				encodeCustomEncoderStruct,
+				decodeCustomEncoderStruct,
+				OneFieldStruct[*CustomEncoderStruct]{
+					Field: &CustomEncoderStruct{
+						Value: 150,
+					},
+				},
+				OneFieldStruct[*CustomEncoderStruct]{
+					Field: &CustomEncoderStruct{
+						Value: 152,
+					},
+				},
+			),
+		},
+		"should use custom encoder on slice": {
+			testCustomEncodersDecoders(
+				encodeCustomEncoderStruct,
+				decodeCustomEncoderStruct,
+				OneFieldStruct[[]CustomEncoderStruct]{
+					Field: []CustomEncoderStruct{
+						{Value: 150},
+						{Value: 151},
+					},
+				},
+				OneFieldStruct[[]CustomEncoderStruct]{
+					Field: []CustomEncoderStruct{
+						{Value: 152},
+						{Value: 153},
+					},
+				},
+			),
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, test.fn)
+	}
+}
+
+type CustomEncoderStruct struct {
+	Value int
+}
+
+func encodeCustomEncoderStruct(v CustomEncoderStruct) ([]byte, error) {
+	return []byte(strconv.Itoa(v.Value + 1)), nil
+}
+
+func decodeCustomEncoderStruct(slc []byte) (CustomEncoderStruct, error) {
+	res, err := strconv.Atoi(string(slc))
+	if err != nil {
+		return CustomEncoderStruct{}, err
+	}
+
+	return CustomEncoderStruct{
+		Value: res + 1,
+	}, err
+}
+
+func testCustomEncodersDecoders[V any, T any](
+	enc func(T) ([]byte, error),
+	dec func([]byte) (T, error),
+	original V,
+	expected V,
+) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Cleanup(func() {
+			protoenc.CleanEncoderDecoder()
+		})
+
+		protoenc.RegisterEncoderDecoder(enc, dec)
+
+		encoded := must(protoenc.Marshal(&original))(t)
+
+		var result V
+
+		require.NoError(t, protoenc.Unmarshal(encoded, &result))
+		require.Equal(t, expected, result)
+	}
+}
+
+type OneFieldStruct[T any] struct {
+	Field T `protobuf:"1"`
+}
+
+func TestIncorrectCustomEncoders(t *testing.T) {
+	t.Cleanup(func() {
+		protoenc.CleanEncoderDecoder()
+	})
+
+	require.Panics(t, func() {
+		protoenc.RegisterEncoderDecoder(
+			func(v []CustomEncoderStruct) ([]byte, error) { return nil, nil },
+			func(slc []byte) ([]CustomEncoderStruct, error) { return nil, nil },
+		)
+	})
+
+	require.Panics(t, func() {
+		protoenc.RegisterEncoderDecoder(
+			func(v string) ([]byte, error) { return nil, nil },
+			func(slc []byte) (string, error) { return "", nil },
+		)
+	})
 }
