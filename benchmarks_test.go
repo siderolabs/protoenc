@@ -75,3 +75,67 @@ func BenchmarkCustom(b *testing.B) {
 		}
 	}
 }
+
+func BenchmarkSlice(b *testing.B) {
+	type structWithSlice struct {
+		Field []int `protobuf:"1"`
+	}
+
+	type structType struct {
+		Field structWithSlice `protobuf:"1"`
+	}
+
+	o := structType{
+		Field: structWithSlice{
+			Field: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 1500, 1600},
+		},
+	}
+
+	encoded, err := protoenc.Marshal(&o)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	target := &structType{}
+	for i := 0; i < b.N; i++ {
+		*target = structType{}
+
+		err := protoenc.Unmarshal(encoded, target)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkString(b *testing.B) {
+	type structWithString struct {
+		Field string `protobuf:"1"`
+	}
+
+	type structType struct {
+		Field structWithString `protobuf:"1"`
+	}
+
+	o := structType{
+		Field: structWithString{
+			Field: "stuff to benchmark",
+		},
+	}
+
+	encoded, err := protoenc.Marshal(&o)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	target := &structType{}
+	for i := 0; i < b.N; i++ {
+		*target = structType{}
+
+		err := protoenc.Unmarshal(encoded, target)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
