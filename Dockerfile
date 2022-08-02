@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-07-26T15:20:24Z by kres latest.
+# Generated on 2022-08-02T12:15:47Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -59,6 +59,7 @@ COPY ./map_test.go ./map_test.go
 COPY ./marshal.go ./marshal.go
 COPY ./marshal_test.go ./marshal_test.go
 COPY ./person_test.go ./person_test.go
+COPY ./pointer.go ./pointer.go
 COPY ./predefined_types.go ./predefined_types.go
 COPY ./protobuf_test.go ./protobuf_test.go
 COPY ./type_cache.go ./type_cache.go

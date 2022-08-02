@@ -122,18 +122,24 @@ func Test2dSlice(t *testing.T) {
 	t.Parallel()
 
 	t.Run("should fail on 2d int slice", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := Slice[int]{Values: [][]int{{1, 2, 3}, {4, 5, 6}}}
 		_, err := protoenc.Marshal(&encoded)
 		require.Error(t, err)
 	})
 
 	t.Run("should fail on 2d uint16 slice", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := Slice[uint16]{Values: [][]uint16{{1, 2, 3}, {4, 5, 6}}}
 		_, err := protoenc.Marshal(&encoded)
 		require.Error(t, err)
 	})
 
 	t.Run("should ok on 2d byte slice", func(t *testing.T) {
+		t.Parallel()
+
 		encoded := Slice[byte]{Values: [][]byte{{1, 2, 3}, {4, 5, 6}}}
 		buf := must(protoenc.Marshal(&encoded))(t)
 

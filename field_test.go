@@ -30,7 +30,7 @@ func TestEncodeNested(t *testing.T) {
 
 	actual := must(protoenc.StructFields(val.Type()))(t)
 	for _, f := range actual {
-		f.Field = reflect.StructField{}
+		f.Field = reflect.StructField{} //nolint:govet
 	}
 
 	expected := []*protoenc.FieldData{

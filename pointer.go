@@ -4,8 +4,6 @@
 
 package protoenc
 
-//TODO: remove this once Go 1.19 lands
-
 import (
 	"sync/atomic"
 	"unsafe"
@@ -13,6 +11,7 @@ import (
 
 // A Pointer is an atomic pointer of type *T. The zero value is a nil *T.
 type Pointer[T any] struct {
+	// TODO: remove this once Go 1.19 lands.
 	v unsafe.Pointer
 }
 
@@ -20,6 +19,6 @@ type Pointer[T any] struct {
 func (x *Pointer[T]) Load() *T { return (*T)(atomic.LoadPointer(&x.v)) }
 
 // CompareAndSwap executes the compare-and-swap operation for x.
-func (x *Pointer[T]) CompareAndSwap(old, new *T) (swapped bool) {
-	return atomic.CompareAndSwapPointer(&x.v, unsafe.Pointer(old), unsafe.Pointer(new))
+func (x *Pointer[T]) CompareAndSwap(old, newVal *T) (swapped bool) {
+	return atomic.CompareAndSwapPointer(&x.v, unsafe.Pointer(old), unsafe.Pointer(newVal))
 }

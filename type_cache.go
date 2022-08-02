@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
-	"unsafe"
 
 	"google.golang.org/protobuf/encoding/protowire"
 )
@@ -207,7 +206,7 @@ func RegisterEncoderDecoder[T any, Enc func(T) ([]byte, error), Dec func([]byte)
 			return err
 		}
 
-		*(*T)(unsafe.Pointer(dst.UnsafeAddr())) = v
+		*(*T)(dst.Addr().UnsafePointer()) = v
 
 		return nil
 	}

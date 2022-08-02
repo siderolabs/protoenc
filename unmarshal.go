@@ -451,10 +451,9 @@ func (u *unmarshaller) slice(dst reflect.Value, decodedBytes []byte) error {
 		return err
 	}
 
-	elem := reflect.New(elemType).Elem()
-
 	if wiretype < 0 { // Other unpacked repeated types
 		// Just unpack and append one value from decodedBytes.
+		elem := reflect.New(elemType).Elem()
 		if err := u.putInto(elem, protowire.BytesType, 0, decodedBytes); err != nil {
 			return err
 		}
@@ -464,14 +463,20 @@ func (u *unmarshaller) slice(dst reflect.Value, decodedBytes []byte) error {
 		return nil
 	}
 
+	sw := sequenceWrapper{
+		seq: dst,
+	}
+
+	defer sw.FixLen()
+
 	// Decode packed values from the buffer and append them to the dst.
 	for len(decodedBytes) > 0 {
-		rem, err := u.decodeValue(wiretype, decodedBytes, elem)
+		nextElem := sw.NextElem()
+
+		rem, err := u.decodeValue(wiretype, decodedBytes, nextElem)
 		if err != nil {
 			return err
 		}
-
-		dst.Set(reflect.Append(dst, elem))
 
 		decodedBytes = rem
 	}
@@ -574,4 +579,70 @@ func (u *unmarshaller) mapEntry(dstEntry reflect.Value, decodedBytes []byte) err
 	dstEntry.SetMapIndex(entryKey, entryVal)
 
 	return nil
+}
+
+type sequenceWrapper struct {
+	seq reflect.Value
+	idx int
+}
+
+func (w *sequenceWrapper) NextElem() reflect.Value {
+	if w.seq.Kind() == reflect.Array {
+		result := w.seq.Index(w.idx)
+		w.idx++
+
+		return result
+	}
+
+	if sliceCap := w.seq.Cap(); w.idx == sliceCap {
+		w.seq.Set(grow(w.seq, 1))
+	}
+
+	result := w.seq.Index(w.idx)
+	w.idx++
+
+	return result
+}
+
+func (w *sequenceWrapper) FixLen() {
+	if w.seq.Kind() == reflect.Array {
+		return
+	}
+
+	w.seq.SetLen(w.idx)
+}
+
+// grow grows the slice s so that it can hold extra more values, allocating
+// more capacity if needed. It also returns the new cap.
+func grow(s reflect.Value, extra int) reflect.Value {
+	oldLen := s.Len()
+	newLen := oldLen + extra
+
+	if newLen < oldLen {
+		panic("reflect.Append: slice overflow")
+	}
+
+	targetCap := s.Cap()
+	if newLen <= targetCap {
+		return s.Slice(0, targetCap)
+	}
+
+	if targetCap == 0 {
+		targetCap = extra
+	} else {
+		const threshold = 256
+		for targetCap < newLen {
+			if oldLen < threshold {
+				targetCap += targetCap
+			} else {
+				targetCap += (targetCap + 3*threshold) / 4
+			}
+		}
+	}
+
+	t := reflect.MakeSlice(s.Type(), targetCap, targetCap)
+
+	reflect.Copy(t, s)
+
+	return t
 }

@@ -272,27 +272,45 @@ func testDisallowedTypes[T any](t *testing.T) {
 func TestDuration(t *testing.T) {
 	t.Parallel()
 
-	arr := newArray(time.Second*11, time.Second*12, time.Second*13)
-	buf := must(protoenc.Marshal(arr))(t)
+	expected := newArray(time.Second*11, time.Second*12, time.Second*13)
+	buf := must(protoenc.Marshal(expected))(t)
 
 	t.Log(hex.Dump(buf))
 
-	var target array[time.Duration]
+	var actual array[time.Duration]
 
-	require.NoError(t, protoenc.Unmarshal(buf, &target))
-	assert.Equal(t, arr.Arr, target.Arr)
+	require.NoError(t, protoenc.Unmarshal(buf, &actual))
+	assert.Equal(t, expected.Arr, actual.Arr)
 }
 
 func TestTime(t *testing.T) {
 	t.Parallel()
 
-	arr := newArray(time.Unix(11, 0).UTC(), time.Unix(12, 0).UTC(), time.Unix(13, 0).UTC())
-	buf := must(protoenc.Marshal(arr))(t)
+	expected := newArray(time.Unix(11, 0).UTC(), time.Unix(12, 0).UTC(), time.Unix(13, 0).UTC())
+	buf := must(protoenc.Marshal(expected))(t)
 
 	t.Log(hex.Dump(buf))
 
-	var target array[time.Time]
+	var actual array[time.Time]
 
-	require.NoError(t, protoenc.Unmarshal(buf, &target))
-	assert.Equal(t, arr.Arr, target.Arr)
+	require.NoError(t, protoenc.Unmarshal(buf, &actual))
+	assert.Equal(t, expected.Arr, actual.Arr)
+}
+
+func TestSliceToArray(t *testing.T) {
+	t.Parallel()
+
+	expected := newArray(1, 2, 3, 4, 5, 6, 7, 8, 9, 100500)
+	buf := must(protoenc.Marshal(expected))(t)
+
+	t.Log(hex.Dump(buf))
+
+	type structWithArray struct {
+		Arr [10]int `protobuf:"1"`
+	}
+
+	var actual structWithArray
+
+	require.NoError(t, protoenc.Unmarshal(buf, &actual))
+	assert.Equal(t, expected.Arr, actual.Arr[:])
 }
