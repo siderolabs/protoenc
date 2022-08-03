@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-02T12:15:47Z by kres latest.
+# Generated on 2022-08-03T15:33:56Z by kres latest.
 
 **
 !messages
@@ -15,7 +15,6 @@
 !marshal.go
 !marshal_test.go
 !person_test.go
-!pointer.go
 !predefined_types.go
 !protobuf_test.go
 !type_cache.go

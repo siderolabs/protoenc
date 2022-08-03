@@ -13,6 +13,7 @@ import (
 )
 
 // Go-based protobuf definition for the example Person message format
+//
 //nolint:govet
 type Person struct {
 	Name  string        `protobuf:"1"`
@@ -37,6 +38,7 @@ type PhoneNumber struct {
 
 // This example defines, encodes, and decodes a Person message format
 // equivalent to the example used in the Protocol Buffers overview.
+//
 //nolint:nosnakecase
 func Example_protobuf() {
 	// Create a Person record

@@ -222,24 +222,24 @@ func TestTimeTypesEncodeDecode(t *testing.T) {
 	assert.Equal(t, in.Duration, out.Duration)
 }
 
-/* encoding of testMsg is equivalent to the encoding to the following in
-  a .proto file:
-	message cipherText {
-	  int32 a = 1;
-	  int32 b = 2;
-	  }
-
-	  message MapFieldEntry {
-	  uint32 key = 1;
-	  cipherText value = 2;
-	  }
-
-	  message testMsg {
-	  repeated MapFieldEntry map_field = 1;
-	  }
-  for details see:
-https://developers.google.com/protocol-buffers/docs/proto#backwards-compatibility */
 type wrongTestMsg struct {
+	/* encoding of testMsg is equivalent to the encoding to the following in
+	     a .proto file:
+	   	message cipherText {
+	   	  int32 a = 1;
+	   	  int32 b = 2;
+	   	  }
+
+	   	  message MapFieldEntry {
+	   	  uint32 key = 1;
+	   	  cipherText value = 2;
+	   	  }
+
+	   	  message testMsg {
+	   	  repeated MapFieldEntry map_field = 1;
+	   	  }
+	     for details see:
+	   https://developers.google.com/protocol-buffers/docs/proto#backwards-compatibility */
 	M map[uint32][]cipherText
 }
 

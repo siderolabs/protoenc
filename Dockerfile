@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-02T12:15:47Z by kres latest.
+# Generated on 2022-08-03T15:33:56Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -20,7 +20,8 @@ ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
 ARG GOLANGCILINT_VERSION
-RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCILINT_VERSION}/install.sh | bash -s -- -b /bin ${GOLANGCILINT_VERSION}
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCILINT_VERSION} \
+	&& mv /go/bin/golangci-lint /bin/golangci-lint
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumpt /bin/gofumpt
@@ -59,7 +60,6 @@ COPY ./map_test.go ./map_test.go
 COPY ./marshal.go ./marshal.go
 COPY ./marshal_test.go ./marshal_test.go
 COPY ./person_test.go ./person_test.go
-COPY ./pointer.go ./pointer.go
 COPY ./predefined_types.go ./predefined_types.go
 COPY ./protobuf_test.go ./protobuf_test.go
 COPY ./type_cache.go ./type_cache.go

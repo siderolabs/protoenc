@@ -35,6 +35,7 @@ func StructFields(typ reflect.Type) ([]FieldData, error) {
 }
 
 // FieldData represents a field of a struct with proto number and field index.
+//
 //nolint:govet
 type FieldData struct {
 	Num        protowire.Number
