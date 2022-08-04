@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-03T15:33:56Z by kres latest.
+# Generated on 2022-08-04T13:22:07Z by kres latest.
 
 **
 !messages
@@ -19,6 +19,7 @@
 !protobuf_test.go
 !type_cache.go
 !unmarshal.go
+!unmarshal_fastpath.go
 !go.mod
 !go.sum
 !.golangci.yml

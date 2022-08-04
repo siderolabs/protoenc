@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-03T15:33:56Z by kres latest.
+# Generated on 2022-08-04T13:22:07Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -64,6 +64,7 @@ COPY ./predefined_types.go ./predefined_types.go
 COPY ./protobuf_test.go ./protobuf_test.go
 COPY ./type_cache.go ./type_cache.go
 COPY ./unmarshal.go ./unmarshal.go
+COPY ./unmarshal_fastpath.go ./unmarshal_fastpath.go
 RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 
 # runs protobuf compiler

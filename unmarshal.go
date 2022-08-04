@@ -454,12 +454,21 @@ func (u *unmarshaller) slice(dst reflect.Value, decodedBytes []byte) error {
 	if wiretype < 0 { // Other unpacked repeated types
 		// Just unpack and append one value from decodedBytes.
 		elem := reflect.New(elemType).Elem()
-		if err := u.putInto(elem, protowire.BytesType, 0, decodedBytes); err != nil {
+		if err = u.putInto(elem, protowire.BytesType, 0, decodedBytes); err != nil {
 			return err
 		}
 
 		dst.Set(reflect.Append(dst, elem))
 
+		return nil
+	}
+
+	ok, err = tryDecodePredefinedSlice(wiretype, decodedBytes, dst)
+	if err != nil {
+		return err
+	}
+
+	if ok {
 		return nil
 	}
 
@@ -489,7 +498,7 @@ func getWiretypeFor(elemType reflect.Type) (protowire.Type, error) {
 	case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Int,
 		reflect.Uint32, reflect.Uint64, reflect.Uint:
 		if (elemType.Kind() == reflect.Int || elemType.Kind() == reflect.Uint) && elemType.Size() < 8 {
-			return 0, errors.New("detected a 32bit machine, please either use (u)int64 or (u)int32")
+			return -1, errors.New("detected a 32bit machine, please either use (u)int64 or (u)int32")
 		}
 
 		switch elemType {

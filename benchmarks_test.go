@@ -74,6 +74,8 @@ func BenchmarkCustom(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
+	require.Equal(b, o.Field.Value+2, target.Field.Value)
 }
 
 func BenchmarkSlice(b *testing.B) {
@@ -106,6 +108,8 @@ func BenchmarkSlice(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
+	require.Equal(b, o, *target)
 }
 
 func BenchmarkString(b *testing.B) {
@@ -138,4 +142,6 @@ func BenchmarkString(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
+
+	require.Equal(b, o, *target)
 }
