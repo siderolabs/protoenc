@@ -179,13 +179,13 @@ type (
 )
 
 // RegisterEncoderDecoder registers the given encoder and decoder for the given type. T should be struct or
-// pointer to struct. T and pointer to T are treated the same.
+// pointer to struct.
 func RegisterEncoderDecoder[T any, Enc func(T) ([]byte, error), Dec func([]byte) (T, error)](enc Enc, dec Dec) {
 	var zero T
 
-	typ := deref(reflect.TypeOf(zero))
-	if typ.Kind() != reflect.Struct {
-		panic("RegisterEncoderDecoder: T must be a struct")
+	typ := reflect.TypeOf(zero)
+	if indirect(typ).Kind() != reflect.Struct {
+		panic("RegisterEncoderDecoder: T must be struct or pointer to struct")
 	}
 
 	fnEnc := func(val any) ([]byte, error) {
@@ -222,6 +222,14 @@ func RegisterEncoderDecoder[T any, Enc func(T) ([]byte, error), Dec func([]byte)
 
 	encoders.Add(typ, fnEnc)
 	decoders.Add(typ, fnDec)
+}
+
+func indirect(typ reflect.Type) reflect.Type {
+	if typ.Kind() == reflect.Ptr {
+		return typ.Elem()
+	}
+
+	return typ
 }
 
 // CleanEncoderDecoder cleans the map of encoders and decoders. It's not safe to it call concurrently.
