@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-04T13:22:07Z by kres latest.
+# Generated on 2022-08-09T01:20:13Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -49,7 +49,6 @@ COPY ./go.sum .
 RUN --mount=type=cache,target=/go/pkg go mod download
 RUN --mount=type=cache,target=/go/pkg go mod verify
 COPY ./messages ./messages
-COPY ./array_test.go ./array_test.go
 COPY ./benchmarks_test.go ./benchmarks_test.go
 COPY ./example_test.go ./example_test.go
 COPY ./field_test.go ./field_test.go
@@ -62,6 +61,8 @@ COPY ./marshal_test.go ./marshal_test.go
 COPY ./person_test.go ./person_test.go
 COPY ./predefined_types.go ./predefined_types.go
 COPY ./protobuf_test.go ./protobuf_test.go
+COPY ./scanner.go ./scanner.go
+COPY ./slice_test.go ./slice_test.go
 COPY ./type_cache.go ./type_cache.go
 COPY ./unmarshal.go ./unmarshal.go
 COPY ./unmarshal_fastpath.go ./unmarshal_fastpath.go

@@ -59,16 +59,17 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 	for i := 0; i < typ.NumField(); i++ {
 		typField := typ.Field(i)
 
+		// Report error sooner than later
+		if typField.Anonymous && deref(typField.Type).Kind() != reflect.Struct {
+			return nil, fmt.Errorf("%s.%s.%s is not a struct type", typ.PkgPath(), typ.Name(), typField.Name)
+		}
+
 		// Skipping private types
 		if !typField.IsExported() {
 			continue
 		}
 
 		if typField.Anonymous {
-			if deref(typField.Type).Kind() != reflect.Struct {
-				return nil, fmt.Errorf("%s.%s.%s is not a struct type", typ.PkgPath(), typ.Name(), typField.Name)
-			}
-
 			fields, err := structFields(typField.Type)
 			if err != nil {
 				return nil, err
@@ -100,15 +101,11 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 		})
 	}
 
-	if len(result) == 0 {
-		return nil, fmt.Errorf("%s.%s has no exported fields", typ.PkgPath(), typ.Name())
-	}
-
 	return result, nil
 }
 
 func deref(typ reflect.Type) reflect.Type {
-	for typ.Kind() == reflect.Ptr {
+	for typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
 
@@ -225,7 +222,7 @@ func RegisterEncoderDecoder[T any, Enc func(T) ([]byte, error), Dec func([]byte)
 }
 
 func indirect(typ reflect.Type) reflect.Type {
-	if typ.Kind() == reflect.Ptr {
+	if typ.Kind() == reflect.Pointer {
 		return typ.Elem()
 	}
 

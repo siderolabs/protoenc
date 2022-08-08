@@ -64,8 +64,8 @@ func Example_protobuf() {
 
 	// Decode it
 	person2 := Person{}
-	if err := protoenc.Unmarshal(buf, &person2); err != nil {
-		panic("Decode failed")
+	if err = protoenc.Unmarshal(buf, &person2); err != nil {
+		panic(err)
 	}
 
 	if !reflect.DeepEqual(person, person2) {

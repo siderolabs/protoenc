@@ -25,7 +25,11 @@ type BasicMessage struct {
 }
 
 func TestBasicMessage(t *testing.T) {
+	t.Parallel()
+
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := BasicMessage{
 			Int64:      1,
 			UInt64:     2,
@@ -43,6 +47,8 @@ func TestBasicMessage(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := BasicMessage{}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.BasicMessage](t, encoded1)
@@ -53,6 +59,8 @@ func TestBasicMessage(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := BasicMessage{SomeString: "some string"}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.BasicMessage](t, encoded1)
@@ -72,7 +80,11 @@ type MessageRepeatedFields struct {
 }
 
 func TestMessageRepeatedFields(t *testing.T) {
+	t.Parallel()
+
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		originalMsg := MessageRepeatedFields{
 			Int64:      []int64{1, 2, 3},
 			UInt64:     []uint64{4, 5, 6},
@@ -90,6 +102,8 @@ func TestMessageRepeatedFields(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := MessageRepeatedFields{}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.MessageRepeatedFields](t, encoded1)
@@ -100,6 +114,8 @@ func TestMessageRepeatedFields(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := MessageRepeatedFields{SomeString: []string{"some string"}}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.MessageRepeatedFields](t, encoded1)
@@ -115,7 +131,11 @@ type BasicMessageRep struct {
 }
 
 func TestBasicMessageRep(t *testing.T) {
+	t.Parallel()
+
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		originalMsg := BasicMessageRep{
 			BasicMessage: []BasicMessage{
 				{
@@ -143,6 +163,8 @@ func TestBasicMessageRep(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := BasicMessageRep{}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.BasicMessageRep](t, encoded1)
@@ -153,6 +175,8 @@ func TestBasicMessageRep(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := BasicMessageRep{
 			BasicMessage: []BasicMessage{
 				{
@@ -176,7 +200,11 @@ type MessageComplexFields struct {
 }
 
 func TestMessageComplexFields(t *testing.T) {
+	t.Parallel()
+
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		originalMsg := MessageComplexFields{
 			MapToMsg: map[string]BasicMessage{
 				"key": {
@@ -240,6 +268,8 @@ func TestMessageComplexFields(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		ourBasicMessage := MessageComplexFields{}
 		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
 		basicMessage := protoUnmarshal[messages.MessageComplexFields](t, encoded1)
@@ -250,6 +280,8 @@ func TestMessageComplexFields(t *testing.T) {
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
+		t.Parallel()
+
 		originalMsg := MessageComplexFields{
 			MapToMsg: map[string]BasicMessage{
 				"key": {

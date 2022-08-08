@@ -53,15 +53,3 @@ func hexToBytes(f *testing.F, s string) []byte {
 
 	return b
 }
-
-func TestName(t *testing.T) {
-	ourBasicMessage := BasicMessage{
-		Int64:      0,
-		UInt64:     0,
-		Fixed64:    protoenc.FixedU64(0),
-		SomeString: "",
-		SomeBytes:  nil,
-	}
-	encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-	t.Logf("\n%s", hex.Dump(encoded1))
-}

@@ -28,7 +28,7 @@ var predefiniedDecoders = map[reflect.Type]func(buf []byte, dst reflect.Value) (
 	typeOf[[]float64]():  decodeFloat64,
 }
 
-func tryDecodePredefinedSlice(wiretype protowire.Type, buf []byte, dst reflect.Value) (bool, error) {
+func tryUnmarshalPredefinedSliceTypes(wiretype protowire.Type, buf []byte, dst reflect.Value) (bool, error) {
 	switch wiretype { //nolint:exhaustive
 	case protowire.VarintType, protowire.Fixed32Type, protowire.Fixed64Type:
 		fn, ok := predefiniedDecoders[dst.Type()]

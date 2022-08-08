@@ -5,6 +5,8 @@
 package protoenc_test
 
 import (
+	"encoding/hex"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -29,4 +31,19 @@ func panicOnErr[T any](t T, err error) T {
 
 func ptr[T any](t T) *T {
 	return &t
+}
+
+// hexToBytes converts a hex string to a byte slice, removing any whitespace.
+func hexToBytes(t *testing.T, s string) []byte {
+	t.Helper()
+
+	s = strings.ReplaceAll(s, "|", "")
+	s = strings.ReplaceAll(s, "[", "")
+	s = strings.ReplaceAll(s, "]", "")
+	s = strings.ReplaceAll(s, " ", "")
+
+	b, err := hex.DecodeString(s)
+	require.NoError(t, err)
+
+	return b
 }

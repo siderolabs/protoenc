@@ -48,7 +48,7 @@ func Marshal(ptr interface{}) (result []byte, err error) {
 	}
 
 	val := reflect.ValueOf(ptr)
-	if val.Kind() != reflect.Ptr {
+	if val.Kind() != reflect.Pointer {
 		return nil, errors.New("encode takes a pointer to struct")
 	}
 
@@ -62,6 +62,10 @@ type marshaller struct {
 }
 
 func (m *marshaller) Bytes() []byte {
+	if len(m.buf) == 0 {
+		return nil
+	}
+
 	return m.buf
 }
 
@@ -132,7 +136,7 @@ func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
 		index := data.FieldIndex[:i+1]
 
 		result = structVal.FieldByIndex(index)
-		if len(data.FieldIndex) > 1 && result.Kind() == reflect.Ptr && result.IsNil() {
+		if len(data.FieldIndex) > 1 && result.Kind() == reflect.Pointer && result.IsNil() {
 			// Embedded field is nil, return empty reflect.Value. Avo
 			return reflect.Value{}
 		}
@@ -141,17 +145,24 @@ func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
 	return result
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocyclo
 func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 	if m.tryEncodePredefined(num, val) {
 		return
 	}
 
-	// Note that protobufs don't support 8- or 16-bit ints.
 	switch val.Kind() { //nolint:exhaustive
 	case reflect.Bool:
 		putTag(m, num, protowire.VarintType)
 		putBool(m, val.Bool())
+
+	case reflect.Int8, reflect.Int16:
+		putTag(m, num, protowire.Fixed32Type)
+		putInt32(m, int32(val.Int()))
+
+	case reflect.Uint8, reflect.Uint16:
+		putTag(m, num, protowire.Fixed32Type)
+		putInt32(m, int32(val.Uint()))
 
 	case reflect.Int, reflect.Int32, reflect.Int64:
 		putTag(m, num, protowire.VarintType)
@@ -174,8 +185,6 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 		putString(m, val.String())
 
 	case reflect.Struct:
-		putTag(m, num, protowire.BytesType)
-
 		var b []byte
 
 		bmarshaler, ok := asBinaryMarshaler(val)
@@ -192,6 +201,7 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 			b = inner.Bytes()
 		}
 
+		putTag(m, num, protowire.BytesType)
 		putBytes(m, b)
 	case reflect.Slice, reflect.Array:
 		if val.Len() == 0 {
@@ -202,7 +212,7 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 
 		return
 
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if val.IsNil() {
 			return
 		}
@@ -324,14 +334,16 @@ func (m *marshaller) encodeSlice(key protowire.Number, val reflect.Value) {
 	sliceLen := val.Len()
 	result := marshaller{}
 
-	switch val.Type() {
-	case typeBytes:
-		// Special case for []byte.
+	typ := val.Type()
+	if typ.Elem() == typeByte {
+		// Special case for byte arrays and slices.
 		putTag(m, key, protowire.BytesType)
 		putBytes(m, val.Bytes())
 
 		return
+	}
 
+	switch typ {
 	case typeDurations:
 		// Special case for []time.Duration.
 		slice := val.Interface().([]time.Duration) //nolint:errcheck,forcetypeassert
@@ -380,6 +392,7 @@ func (m *marshaller) encodeSlice(key protowire.Number, val reflect.Value) {
 	putBytes(m, result.Bytes())
 }
 
+//nolint:gocyclo,cyclop
 func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 	if !isSliceOrArray(val) {
 		panic("passed value is not slice or array")
@@ -390,6 +403,16 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 	result := marshaller{}
 
 	switch elem.Kind() { //nolint:exhaustive
+	case reflect.Int8, reflect.Int16:
+		for i := 0; i < sliceLen; i++ {
+			putInt32(&result, int32(val.Index(i).Int()))
+		}
+
+	case reflect.Uint8, reflect.Uint16:
+		for i := 0; i < sliceLen; i++ {
+			putInt32(&result, uint32(val.Index(i).Uint()))
+		}
+
 	case reflect.Bool:
 		for i := 0; i < sliceLen; i++ {
 			putBool(&result, val.Index(i).Bool())
@@ -415,8 +438,16 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 			putInt64(&result, math.Float64bits(val.Index(i).Float()))
 		}
 
-	case reflect.Uint8:
-		panic(fmt.Errorf("unsupported type %s", val.Type().String()))
+	case reflect.Pointer:
+		if !isSlicePtrElemSupported(elem) {
+			panic(fmt.Errorf("unsupported type: '%s'", val.String()))
+		}
+
+		for i := 0; i < sliceLen; i++ {
+			m.encodeValue(key, val.Index(i))
+		}
+
+		return
 
 	case reflect.Map:
 		panic(fmt.Errorf("unsupported type %s", val.Type().String()))
@@ -425,7 +456,7 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 		if elem.Kind() == reflect.Slice || elem.Kind() == reflect.Array {
 			subSlice := elem.Elem()
 			if subSlice.Kind() != reflect.Uint8 {
-				panic("error no support for 2-dimensional array except for [][]byte")
+				panic("unsupported type: error no support for 2-dimensional array except for [][]byte")
 			}
 		}
 
@@ -440,19 +471,58 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 	putBytes(m, result.buf)
 }
 
+func isSlicePtrElemSupported(elem reflect.Type) bool {
+	elem = deref(elem)
+
+	switch elem.Kind() { //nolint:exhaustive
+	case reflect.Int8, reflect.Int16, reflect.Uint8, reflect.Uint16, reflect.Bool,
+		reflect.Int, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return false
+
+	case reflect.Slice, reflect.Array:
+		if elem.Elem().Kind() == reflect.Uint8 {
+			return true
+		}
+
+		return false
+
+	default:
+		return true
+	}
+}
+
 func (m *marshaller) encodeMap(key protowire.Number, mpval reflect.Value) {
+	first := true
+
 	for _, mkey := range mpval.MapKeys() {
 		mval := mpval.MapIndex(mkey)
 
-		switch kind := mval.Kind(); kind { //nolint:exhaustive
-		case reflect.Ptr:
-			if mval.IsNil() {
-				panic("error: map has nil element")
+		if first {
+			// map key can only be a primitive type or a string
+			switch mkey.Kind() { //nolint:exhaustive
+			case reflect.Struct, reflect.Array, reflect.Interface, reflect.Pointer:
+				panic(errors.New("unsupported type: map key cannot be struct, array, interface or pointer"))
 			}
-		case reflect.Slice, reflect.Array:
-			if mval.Type().Elem().Kind() != reflect.Uint8 {
-				panic("error: map only support []byte or string as repeated value")
+
+			unwrapVal := deref(mval.Type())
+
+			switch unwrapVal.Kind() { //nolint:exhaustive
+			case reflect.Slice, reflect.Array:
+				if mval.Type().Elem() == typeByte {
+					break
+				}
+
+				fallthrough
+			case reflect.Interface:
+				panic(errors.New("unsupported type: map value cannot be non byte slice, array or interface"))
 			}
+
+			first = false
+		}
+
+		if kind := mval.Kind(); kind == reflect.Pointer && mval.IsNil() {
+			panic("error: map has nil element")
 		}
 
 		inner := marshaller{}

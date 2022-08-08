@@ -14,7 +14,7 @@ import (
 	"github.com/siderolabs/protoenc"
 )
 
-func TestEncodeNested(t *testing.T) {
+func TestStructFields_EmbedStruct(t *testing.T) {
 	t.Parallel()
 
 	s := &StructWithEmbed{
@@ -65,7 +65,7 @@ type EmbedStruct struct {
 	C int32 `protobuf:"11"`
 }
 
-func TestDuplicateIDNotAllowed(t *testing.T) {
+func TestStructFields_DuplicateIDNotAllowed(t *testing.T) {
 	t.Parallel()
 
 	v := reflect.TypeOf(&StructWithDuplicates{})

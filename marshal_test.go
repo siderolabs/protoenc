@@ -93,29 +93,29 @@ func (i *intWrapper) UnmarshalBinary(data []byte) error {
 func TestNoBinaryMarshaler(t *testing.T) {
 	t.Parallel()
 
-	encoded := WrapperNoMarshal[string]{&ValueWrapper[string]{V: "test-string"}}
+	encoded := WrapperNoMarshal[string]{&Value[string]{V: "test-string"}}
 	buf := must(protoenc.Marshal(&encoded))(t)
 
-	decoded := WrapperNoMarshal[string]{&ValueWrapper[string]{V: ""}}
+	decoded := WrapperNoMarshal[string]{&Value[string]{V: ""}}
 	require.NoError(t, protoenc.Unmarshal(buf, &decoded))
 
 	require.Equal(t, encoded.Field.Val(), decoded.Field.Val())
 }
 
 type WrapperNoMarshal[T any] struct {
-	Field Value[T] `protobuf:"1"`
+	Field Valuer[T] `protobuf:"1"`
 }
 
-type Value[T any] interface {
+type Valuer[T any] interface {
 	Val() T
 }
 
-type ValueWrapper[T any] struct {
+type Value[T any] struct {
 	V T `protobuf:"1"`
 }
 
-func (vw *ValueWrapper[T]) Val() T {
-	return vw.V
+func (v *Value[T]) Val() T {
+	return v.V
 }
 
 func Test2dSlice(t *testing.T) {
@@ -350,22 +350,32 @@ func TestMarshal(t *testing.T) {
 	assert.Equal(t, b, testB)
 }
 
-type EmbeddedStruct struct {
-	Value  int    `protobuf:"1"`
-	Value2 uint32 `protobuf:"2"`
-}
+func TestMarshalEmpty(t *testing.T) {
+	type Empty struct{}
 
-type AnotherEmbeddedStruct struct {
-	Value1 int    `protobuf:"3"`
-	Value2 uint32 `protobuf:"4"`
+	buf := must(protoenc.Marshal(&Empty{}))(t)
+	require.Len(t, buf, 0)
+
+	buf = must(protoenc.Marshal(&OneFieldStruct[Empty]{}))(t)
+	require.Equal(t, []byte{0x0a, 0x00}, buf)
 }
 
 func TestEmbedding(t *testing.T) {
+	type EmbeddedStruct struct {
+		Value  int    `protobuf:"1"`
+		Value2 uint32 `protobuf:"2"`
+	}
+
+	type AnotherEmbeddedStruct struct {
+		Value1 int    `protobuf:"3"`
+		Value2 uint32 `protobuf:"4"`
+	}
+
 	structs := map[string]struct {
 		fn func(t *testing.T)
 	}{
 		"should embed struct": {
-			fn: makeEmbedTest(struct {
+			fn: testEncodeDecode(struct {
 				EmbeddedStruct
 			}{
 				EmbeddedStruct: EmbeddedStruct{
@@ -375,7 +385,7 @@ func TestEmbedding(t *testing.T) {
 			}),
 		},
 		"should embed struct pointer": {
-			fn: makeEmbedTest(struct {
+			fn: testEncodeDecode(struct {
 				*EmbeddedStruct
 			}{
 				EmbeddedStruct: &EmbeddedStruct{
@@ -385,7 +395,7 @@ func TestEmbedding(t *testing.T) {
 			}),
 		},
 		"should embed nil pointer struct and not nil pointer struct": {
-			fn: makeEmbedTest(struct {
+			fn: testEncodeDecode(struct {
 				*EmbeddedStruct
 				*AnotherEmbeddedStruct
 			}{
@@ -397,7 +407,7 @@ func TestEmbedding(t *testing.T) {
 			}),
 		},
 		"should embed struct with marshaller": {
-			fn: makeEmbedTest(struct {
+			fn: testEncodeDecode(struct {
 				Sequence[string]
 			}{
 				Sequence: Sequence[string]{
@@ -406,21 +416,21 @@ func TestEmbedding(t *testing.T) {
 			}),
 		},
 		"should not embed nil struct pointer": {
-			fn: makeIncorrectEmbedTest(struct {
+			fn: testIncorrectEncode(struct {
 				*EmbeddedStruct
 			}{
 				EmbeddedStruct: nil,
 			}),
 		},
 		"should not embed simple type": {
-			fn: makeIncorrectEmbedTest(struct {
+			fn: testIncorrectEncode(struct {
 				int
 			}{
 				0x11,
 			}),
 		},
 		"should not embed pointer to simple type": {
-			fn: makeIncorrectEmbedTest(struct {
+			fn: testIncorrectEncode(struct {
 				*int
 			}{
 				int: new(int),
@@ -433,7 +443,7 @@ func TestEmbedding(t *testing.T) {
 	}
 }
 
-func makeEmbedTest[V any](v V) func(t *testing.T) {
+func testEncodeDecode[V any](v V) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 		encoded := must(protoenc.Marshal(&v))(t)
@@ -447,7 +457,7 @@ func makeEmbedTest[V any](v V) func(t *testing.T) {
 	}
 }
 
-func makeIncorrectEmbedTest[V any](v V) func(t *testing.T) {
+func testIncorrectEncode[V any](v V) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
 

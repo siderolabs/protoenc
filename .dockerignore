@@ -1,10 +1,9 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-04T13:22:07Z by kres latest.
+# Generated on 2022-08-09T01:20:13Z by kres latest.
 
 **
 !messages
-!array_test.go
 !benchmarks_test.go
 !example_test.go
 !field_test.go
@@ -17,6 +16,8 @@
 !person_test.go
 !predefined_types.go
 !protobuf_test.go
+!scanner.go
+!slice_test.go
 !type_cache.go
 !unmarshal.go
 !unmarshal_fastpath.go

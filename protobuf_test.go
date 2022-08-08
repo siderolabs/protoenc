@@ -222,54 +222,85 @@ func TestTimeTypesEncodeDecode(t *testing.T) {
 	assert.Equal(t, in.Duration, out.Duration)
 }
 
-type wrongTestMsg struct {
-	/* encoding of testMsg is equivalent to the encoding to the following in
-	     a .proto file:
-	   	message cipherText {
-	   	  int32 a = 1;
-	   	  int32 b = 2;
-	   	  }
-
-	   	  message MapFieldEntry {
-	   	  uint32 key = 1;
-	   	  cipherText value = 2;
-	   	  }
-
-	   	  message testMsg {
-	   	  repeated MapFieldEntry map_field = 1;
-	   	  }
-	     for details see:
-	   https://developers.google.com/protocol-buffers/docs/proto#backwards-compatibility */
-	M map[uint32][]cipherText
-}
-
-type rightTestMsg struct {
-	M map[uint32]*cipherText `protobuf:"1"`
-}
-type cipherText struct {
-	A int32 `protobuf:"1"`
-	B int32 `protobuf:"2"`
-}
-
 func TestMapSliceStruct(t *testing.T) {
-	cv := []cipherText{{}, {}}
-	msg := &wrongTestMsg{
-		M: map[uint32][]cipherText{1: cv},
+	t.Parallel()
+
+	type structData struct {
+		A int32 `protobuf:"1"`
+		B int32 `protobuf:"2"`
 	}
 
-	_, err := protoenc.Marshal(msg)
-	assert.Error(t, err)
+	t.Run("test map with slices", func(t *testing.T) {
+		t.Parallel()
 
-	msg2 := &rightTestMsg{
-		M: map[uint32]*cipherText{1: {4, 5}},
-	}
+		type wrongMap struct {
+			M map[uint32][]structData `protobuf:"1"`
+		}
 
-	buff, err := protoenc.Marshal(msg2)
-	assert.NoError(t, err)
+		cv := []structData{{}, {}}
+		msg := &wrongMap{
+			M: map[uint32][]structData{1: cv},
+		}
 
-	dec := &rightTestMsg{}
-	err = protoenc.Unmarshal(buff, dec)
-	assert.NoError(t, err)
+		_, err := protoenc.Marshal(msg)
+		assert.Error(t, err)
+	})
 
-	assert.True(t, reflect.DeepEqual(dec, msg2))
+	t.Run("test wrong map ptr to slice", func(t *testing.T) {
+		t.Parallel()
+
+		type wrongMap struct {
+			M map[uint32]*[]structData `protobuf:"1"`
+		}
+
+		ptrCv := &[]structData{{}, {}}
+		msg := &wrongMap{
+			M: map[uint32]*[]structData{1: ptrCv},
+		}
+
+		_, err := protoenc.Marshal(msg)
+		assert.Error(t, err)
+	})
+
+	t.Run("test right map with ptr to struct", func(t *testing.T) {
+		t.Parallel()
+
+		type rightMap struct {
+			M map[uint32]*structData `protobuf:"1"`
+		}
+
+		msg := &rightMap{
+			M: map[uint32]*structData{1: {4, 5}},
+		}
+
+		buff, err := protoenc.Marshal(msg)
+		assert.NoError(t, err)
+
+		dec := &rightMap{}
+		err = protoenc.Unmarshal(buff, dec)
+		assert.NoError(t, err)
+
+		assert.True(t, reflect.DeepEqual(dec, msg))
+	})
+
+	t.Run("test right map with empty struct", func(t *testing.T) {
+		t.Parallel()
+
+		type rightMap struct {
+			M map[uint32]struct{} `protobuf:"1"`
+		}
+
+		msg := &rightMap{
+			M: map[uint32]struct{}{1: {}},
+		}
+
+		buff, err := protoenc.Marshal(msg)
+		assert.NoError(t, err)
+
+		dec := &rightMap{}
+		err = protoenc.Unmarshal(buff, dec)
+		assert.NoError(t, err)
+
+		assert.True(t, reflect.DeepEqual(dec, msg))
+	})
 }

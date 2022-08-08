@@ -35,7 +35,7 @@ var (
 	typeFixedS32s = reflect.SliceOf(typeFixedS32)
 	typeFixedS64s = reflect.SliceOf(typeFixedS64)
 	typeDurations = reflect.SliceOf(typeDuration)
-	typeBytes     = reflect.SliceOf(typeOf[byte]())
+	typeByte      = typeOf[byte]()
 )
 
 func typeOf[T any]() reflect.Type {
