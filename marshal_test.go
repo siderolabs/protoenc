@@ -489,8 +489,8 @@ func TestCustomEcnoders(t *testing.T) {
 		},
 		"should use custom encoder on pointer": {
 			testCustomEncodersDecoders(
-				encodeCustomEncoderStruct,
-				decodeCustomEncoderStruct,
+				encodeCustomEncoderStructPtr,
+				decodeCustomEncoderStructPtr,
 				OneFieldStruct[*CustomEncoderStruct]{
 					Field: &CustomEncoderStruct{
 						Value: 150,
@@ -498,7 +498,7 @@ func TestCustomEcnoders(t *testing.T) {
 				},
 				OneFieldStruct[*CustomEncoderStruct]{
 					Field: &CustomEncoderStruct{
-						Value: 152,
+						Value: 156,
 					},
 				},
 			),
@@ -544,6 +544,21 @@ func decodeCustomEncoderStruct(slc []byte) (CustomEncoderStruct, error) {
 
 	return CustomEncoderStruct{
 		Value: res + 1,
+	}, err
+}
+
+func encodeCustomEncoderStructPtr(v *CustomEncoderStruct) ([]byte, error) {
+	return []byte(strconv.Itoa(v.Value + 3)), nil
+}
+
+func decodeCustomEncoderStructPtr(slc []byte) (*CustomEncoderStruct, error) {
+	res, err := strconv.Atoi(string(slc))
+	if err != nil {
+		return &CustomEncoderStruct{}, err
+	}
+
+	return &CustomEncoderStruct{
+		Value: res + 3,
 	}, err
 }
 

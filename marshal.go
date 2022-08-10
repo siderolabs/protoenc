@@ -218,6 +218,17 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 			return
 		}
 
+		// If the pointer is to a struct
+		if deref(val.Type()).Kind() == reflect.Struct {
+			b, ok := tryEncodeFunc(val)
+			if ok {
+				putTag(m, num, protowire.BytesType)
+				putBytes(m, b)
+
+				return
+			}
+		}
+
 		m.encodeValue(num, val.Elem())
 
 	case reflect.Interface:

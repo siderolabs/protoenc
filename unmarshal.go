@@ -349,7 +349,7 @@ func instantiate(dst reflect.Value) error {
 	return nil
 }
 
-//nolint:cyclop,gocyclo
+//nolint:cyclop,gocognit,gocyclo
 func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 	defer func() {
 		if err != nil {
@@ -410,6 +410,18 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 			err := instantiate(dst)
 			if err != nil {
 				return err
+			}
+		}
+
+		// If the pointer is to a struct
+		if deref(dst.Type()).Kind() == reflect.Struct {
+			ok, err := tryDecodeFunc(bytes, dst)
+			if err != nil {
+				return err
+			}
+
+			if ok {
+				return nil
 			}
 		}
 
