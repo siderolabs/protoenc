@@ -205,6 +205,8 @@ func TestSmallIntegers(t *testing.T) {
 
 	type customByte byte
 
+	type customSlice []byte
+
 	type customType struct {
 		Int16      int16      `protobuf:"1"`
 		Uint16     uint16     `protobuf:"3"`
@@ -242,6 +244,10 @@ func TestSmallIntegers(t *testing.T) {
 		{
 			"slice of uint16 type should be encoded in 'fixed32' form",
 			testEncodeDecodeWrapped([]uint16{1, 0xFFFF, 3}, encodedUint16s),
+		},
+		{
+			"customSlice should be encoded in 'bytes' form",
+			testEncodeDecodeWrapped(customSlice{1, 0xFF, 3}, encodedBytes),
 		},
 		{
 			"customType should be encoded in 'fixed32' form",

@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -348,7 +349,7 @@ func instantiate(dst reflect.Value) error {
 	return nil
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocyclo
 func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 	defer func() {
 		if err != nil {
@@ -388,6 +389,17 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 		}
 
 		dst.Set(reflect.ValueOf(result.AsDuration()))
+
+		return nil
+	case typeMapInterface:
+		var result structpb.Struct
+
+		err = proto.Unmarshal(bytes, &result)
+		if err != nil {
+			return err
+		}
+
+		dst.Set(reflect.ValueOf(result.AsMap()))
 
 		return nil
 	}

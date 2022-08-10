@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -253,6 +254,22 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 
 func (m *marshaller) tryEncodePredefined(num protowire.Number, val reflect.Value) bool {
 	switch val.Type() {
+	case typeMapInterface:
+		v := val.Interface().(map[string]interface{}) //nolint:errcheck,forcetypeassert
+
+		val, err := structpb.NewStruct(v)
+		if err != nil {
+			panic(fmt.Errorf("failed to create structpb.Struct: %w", err))
+		}
+
+		encoded, err := proto.Marshal(val)
+		if err != nil {
+			panic(err)
+		}
+
+		putTag(m, num, protowire.BytesType)
+		putBytes(m, encoded)
+
 	case typeDuration:
 		d := val.Interface().(time.Duration) //nolint:errcheck,forcetypeassert
 		duration := durationpb.New(d)

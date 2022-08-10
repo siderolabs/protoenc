@@ -592,3 +592,17 @@ func TestIncorrectCustomEncoders(t *testing.T) {
 		)
 	})
 }
+
+func TestMarshalMapInterface(t *testing.T) {
+	// json decodes numeric values as float64s
+	// json decoder do not support slices
+	testEncodeDecode(OneFieldStruct[map[string]interface{}]{map[string]interface{}{
+		"a": 1.0,
+		"b": "2",
+		"c": true,
+		"e": map[string]interface{}{
+			"a": 1.0,
+			"g": 10.10,
+		},
+	}})(t)
+}
