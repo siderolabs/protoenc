@@ -5,7 +5,6 @@
 package protoenc_test
 
 import (
-	"encoding"
 	"encoding/hex"
 	"math/big"
 	"strconv"
@@ -22,100 +21,61 @@ func TestByteOverwrite(t *testing.T) {
 	t.Parallel()
 
 	// This test ensures that if we append to a byte slice in buffer it doesn't affect others
-	encoded := TwoFields{
-		Buf1: []byte("test"),
-		Buf2: []byte("end"),
+	encoded := Pair[[]byte, []byte]{
+		First:  []byte("test"),
+		Second: []byte("end"),
 	}
 	buf, err := protoenc.Marshal(&encoded)
 	require.NoError(t, err)
 
-	var decoded TwoFields
+	var decoded Pair[[]byte, []byte]
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 
-	assert.Equal(t, []byte("test"), decoded.Buf1)
-	assert.Equal(t, []byte("end"), decoded.Buf2)
-	assert.Equal(t, len(decoded.Buf1), cap(decoded.Buf1))
-	assert.Equal(t, len(decoded.Buf2), cap(decoded.Buf2))
+	assert.Equal(t, []byte("test"), decoded.First)
+	assert.Equal(t, []byte("end"), decoded.Second)
+	assert.Equal(t, len(decoded.First), cap(decoded.First))
+	assert.Equal(t, len(decoded.Second), cap(decoded.Second))
 
-	b1 := append(decoded.Buf1, "-lol"...) //nolint:gocritic
+	b1 := append(decoded.First, "-lol"...) //nolint:gocritic
 	assert.Equal(t, []byte("test-lol"), b1)
-	assert.Equal(t, []byte("end"), decoded.Buf2)
+	assert.Equal(t, []byte("end"), decoded.Second)
 }
 
-type TwoFields struct {
-	Buf1 []byte `protobuf:"1"`
-	Buf2 []byte `protobuf:"2"`
+type Pair[T, V any] struct {
+	First  T `protobuf:"1"`
+	Second V `protobuf:"2"`
 }
 
 func TestBinaryMarshaler(t *testing.T) {
 	t.Parallel()
 
-	encoded := StructWithInterface{&intWrapper{val: 150}}
+	encoded := StructWithMarshaller{&IntWrapper{Val: 150}}
 	buf := must(protoenc.Marshal(&encoded))(t)
 
-	decoded := StructWithInterface{&intWrapper{val: 0}}
+	var decoded StructWithMarshaller
+
 	require.NoError(t, protoenc.Unmarshal(buf, &decoded))
-
-	require.Equal(t, encoded.Field.Val(), decoded.Field.Val())
+	require.Equal(t, encoded.Field.Val, decoded.Field.Val)
 }
 
-type StructWithInterface struct {
-	Field ValueM[int] `protobuf:"1"`
+type StructWithMarshaller struct {
+	Field *IntWrapper `protobuf:"1"`
 }
 
-type ValueM[T any] interface {
-	encoding.BinaryMarshaler
-	encoding.BinaryUnmarshaler
-
-	Val() T
+type IntWrapper struct {
+	Val int
 }
 
-type intWrapper struct {
-	val int
+func (i *IntWrapper) MarshalBinary() ([]byte, error) {
+	return protowire.AppendVarint(nil, uint64(i.Val)), nil
 }
 
-func (i *intWrapper) Val() int {
-	return i.val
-}
-
-func (i *intWrapper) MarshalBinary() ([]byte, error) {
-	return protowire.AppendVarint(nil, uint64(i.val)), nil
-}
-
-func (i *intWrapper) UnmarshalBinary(data []byte) error {
+func (i *IntWrapper) UnmarshalBinary(data []byte) error {
 	res, _ := protowire.ConsumeVarint(data)
-	i.val = int(res)
+	i.Val = int(res)
 
 	return nil
-}
-
-func TestNoBinaryMarshaler(t *testing.T) {
-	t.Parallel()
-
-	encoded := WrapperNoMarshal[string]{&Value[string]{V: "test-string"}}
-	buf := must(protoenc.Marshal(&encoded))(t)
-
-	decoded := WrapperNoMarshal[string]{&Value[string]{V: ""}}
-	require.NoError(t, protoenc.Unmarshal(buf, &decoded))
-
-	require.Equal(t, encoded.Field.Val(), decoded.Field.Val())
-}
-
-type WrapperNoMarshal[T any] struct {
-	Field Valuer[T] `protobuf:"1"`
-}
-
-type Valuer[T any] interface {
-	Val() T
-}
-
-type Value[T any] struct {
-	V T `protobuf:"1"`
-}
-
-func (v *Value[T]) Val() T {
-	return v.V
 }
 
 func Test2dSlice(t *testing.T) {
@@ -275,79 +235,65 @@ func TestStringKey(t *testing.T) {
 }
 
 func TestInternalStructMarshal(t *testing.T) {
-	encoded := hasInternalCanMarshal[string]{
-		Field:  Sequence[string]{field: "test for tests"},
-		Field2: 150,
+	encoded := Pair[Sequence[string], int]{
+		First:  Sequence[string]{field: "test for tests"},
+		Second: 150,
 	}
 
 	buf, err := protoenc.Marshal(&encoded)
 	require.NoError(t, err)
 
-	var decoded hasInternalCanMarshal[string]
+	var decoded Pair[Sequence[string], int]
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 
 	assert.Equal(t, encoded, decoded)
 }
 
-type hasInternalCanMarshal[T string | []byte] struct {
-	Field  Sequence[T] `protobuf:"1"`
-	Field2 int         `protobuf:"2"`
+func TestInternalStructMarshalSlice(t *testing.T) {
+	encoded := Pair[[]Sequence[string], int]{
+		First: []Sequence[string]{
+			{field: "test for tests"},
+			{field: "test for another tests"},
+		},
+		Second: 153,
+	}
+
+	buf, err := protoenc.Marshal(&encoded)
+	require.NoError(t, err)
+
+	var decoded Pair[[]Sequence[string], int]
+	err = protoenc.Unmarshal(buf, &decoded)
+	require.NoError(t, err)
+
+	assert.Equal(t, encoded, decoded)
+}
+
+func TestSequence(t *testing.T) {
+	encoded := Sequence[string]{field: "test for tests"}
+
+	buf, err := protoenc.Marshal(&encoded)
+	require.NoError(t, err)
+
+	var decoded Sequence[string]
+	err = protoenc.Unmarshal(buf, &decoded)
+	require.NoError(t, err)
+
+	assert.Equal(t, encoded, decoded)
 }
 
 type Sequence[T string | []byte] struct {
 	field T
 }
 
-//nolint:revive
 func (cm *Sequence[T]) MarshalBinary() ([]byte, error) {
 	return []byte(cm.field), nil
 }
 
-//nolint:revive
 func (cm *Sequence[T]) UnmarshalBinary(data []byte) error {
 	cm.field = T(data)
 
 	return nil
-}
-
-type A struct {
-	Value int `protobuf:"1"`
-}
-
-func (a *A) MarshalBinary() ([]byte, error) {
-	res := protowire.AppendTag(nil, 1, protowire.VarintType)
-
-	return protowire.AppendVarint(res, uint64(a.Value)), nil
-}
-
-func (a *A) Print() string {
-	return ""
-}
-
-type B struct {
-	AValue A   `protobuf:"1"`
-	AInt   int `protobuf:"2"`
-}
-
-func TestMarshal(t *testing.T) {
-	a := A{-149}
-	b := B{a, 300}
-
-	bufA := must(protoenc.Marshal(&a))(t)
-	bufB := must(protoenc.Marshal(&b))(t)
-
-	t.Logf("%s", hex.Dump(bufA))
-	t.Logf("%s", hex.Dump(bufB))
-
-	testA := A{}
-	testB := B{}
-
-	require.NoError(t, protoenc.Unmarshal(bufA, &testA))
-	require.NoError(t, protoenc.Unmarshal(bufB, &testB))
-
-	assert.Equal(t, a, testA)
-	assert.Equal(t, b, testB)
 }
 
 func TestMarshalEmpty(t *testing.T) {
@@ -467,7 +413,7 @@ func testIncorrectEncode[V any](v V) func(t *testing.T) {
 	}
 }
 
-func TestCustomEcnoders(t *testing.T) {
+func TestCustomEncoders(t *testing.T) {
 	tests := map[string]struct {
 		fn func(t *testing.T)
 	}{
@@ -608,16 +554,88 @@ func TestIncorrectCustomEncoders(t *testing.T) {
 	})
 }
 
-func TestMarshalMapInterface(t *testing.T) {
-	// json decodes numeric values as float64s
-	// json decoder do not support slices
-	testEncodeDecode(OneFieldStruct[map[string]interface{}]{map[string]interface{}{
-		"a": 1.0,
-		"b": "2",
-		"c": true,
-		"e": map[string]interface{}{
-			"a": 1.0,
-			"g": 10.10,
-		},
-	}})(t)
+func TestResursiveTypes(t *testing.T) {
+	t.Run("test recursive struct", func(t *testing.T) {
+		type Recursive struct {
+			Next  *Recursive `protobuf:"2"`
+			Value int        `protobuf:"1"`
+		}
+		testEncodeDecode(Recursive{
+			Value: 1,
+			Next: &Recursive{
+				Value: 2,
+				Next: &Recursive{
+					Value: 3,
+				},
+			},
+		})(t)
+	})
+
+	t.Run("test recursive struct with slice", func(t *testing.T) {
+		type Recursive struct {
+			Next  []Recursive `protobuf:"2"`
+			Value int         `protobuf:"1"`
+		}
+		testEncodeDecode(Recursive{
+			Value: 1,
+			Next: []Recursive{
+				{
+					Value: 1,
+					Next: []Recursive{
+						{
+							Value: 2,
+							Next: []Recursive{
+								{
+									Value: 3,
+								},
+							},
+						},
+						{
+							Value: 10,
+							Next: []Recursive{
+								{
+									Value: 11,
+								},
+							},
+						},
+					},
+				},
+			},
+		})(t)
+	})
+
+	t.Run("test recursive struct with map", func(t *testing.T) {
+		type Recursive struct {
+			Next  map[string]Recursive `protobuf:"2"`
+			Value int                  `protobuf:"1"`
+		}
+		testEncodeDecode(
+			Recursive{
+				Value: 1,
+				Next: map[string]Recursive{
+					"a": {
+						Value: 1,
+						Next: map[string]Recursive{
+							"a": {
+								Value: 2,
+								Next: map[string]Recursive{
+									"a": {
+										Value: 3,
+									},
+								},
+							},
+							"b": {
+								Value: 10,
+								Next: map[string]Recursive{
+									"a": {
+										Value: 11,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		)(t)
+	})
 }

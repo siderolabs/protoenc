@@ -5,6 +5,7 @@
 package protoenc
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -20,6 +21,16 @@ func StructFields(typ reflect.Type) ([]FieldData, error) {
 		return result, nil
 	}
 
+	if hasCustomEncoders(typ) {
+		return nil, nil
+	}
+
+	if ok, err := isBinaryMarshaler(typ); ok {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
 	fields, err := structFields(typ)
 	if err != nil {
 		return nil, err
@@ -30,6 +41,13 @@ func StructFields(typ reflect.Type) ([]FieldData, error) {
 	}
 
 	cache.Add(typ, fields)
+
+	err = validateStruct(deref(typ))
+	if err != nil {
+		cache.Remove(typ)
+
+		return nil, err
+	}
 
 	return fields, nil
 }
@@ -58,11 +76,6 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 
 	for i := 0; i < typ.NumField(); i++ {
 		typField := typ.Field(i)
-
-		// Report error sooner than later
-		if typField.Anonymous && deref(typField.Type).Kind() != reflect.Struct {
-			return nil, fmt.Errorf("%s.%s.%s is not a struct type", typ.PkgPath(), typ.Name(), typField.Name)
-		}
 
 		// Skipping private types
 		if !typField.IsExported() {
@@ -160,9 +173,9 @@ func (sm *syncMap[K, V]) Get(k K) (V, bool) {
 	return value.(V), true //nolint:forcetypeassert
 }
 
-func (sm *syncMap[K, V]) Add(k K, v V) {
-	sm.m.Store(k, v)
-}
+func (sm *syncMap[K, V]) Add(k K, v V) { sm.m.Store(k, v) }
+
+func (sm *syncMap[K, V]) Remove(k K) { sm.m.Delete(k) }
 
 var (
 	cache    = syncMap[reflect.Type, []FieldData]{}
@@ -233,4 +246,255 @@ func indirect(typ reflect.Type) reflect.Type {
 func CleanEncoderDecoder() {
 	encoders = syncMap[reflect.Type, encoder]{}
 	decoders = syncMap[reflect.Type, decoder]{}
+}
+
+func validateStruct(typ reflect.Type) error {
+	if typ.Kind() != reflect.Struct {
+		return fmt.Errorf("%s is not a struct", typ)
+	}
+
+	if hasCustomEncoders(typ) {
+		return nil
+	}
+
+	if ok, err := isBinaryMarshaler(typ); ok {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	hasExportedFields := false
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		if isEmbeddedField(field) {
+			return fmt.Errorf("cannot embed %s.%s.%s: not a struct type", typ.PkgPath(), typ.Name(), field.Name)
+		}
+
+		if !field.IsExported() {
+			continue
+		}
+
+		hasExportedFields = true
+
+		if err := validateField(field); err != nil {
+			return fmt.Errorf("%s.%s.%s: %w", typ.PkgPath(), typ.Name(), field.Name, err)
+		}
+	}
+
+	if !hasExportedFields && typ.NumField() > 0 {
+		return fmt.Errorf("%s.%s has only private fields", typ.PkgPath(), typ.Name())
+	}
+
+	return nil
+}
+
+func isEmbeddedField(field reflect.StructField) bool {
+	return field.Anonymous && deref(field.Type).Kind() != reflect.Struct
+}
+
+func validateField(field reflect.StructField) error {
+	if hasCustomEncoders(field.Type) {
+		return nil
+	}
+
+	if ok, err := isBinaryMarshaler(field.Type); ok {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	switch field.Type.Kind() { //nolint:exhaustive
+	case reflect.Struct:
+		_, err := StructFields(field.Type)
+
+		return err
+
+	case reflect.Array:
+		return validateArray(field.Type)
+
+	case reflect.Slice:
+		return validateSlice(field.Type)
+
+	case reflect.Pointer:
+		return validateFieldPtr(field.Type)
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		return nil
+
+	case reflect.Map:
+		return validateMap(field.Type)
+
+	default:
+		return fmt.Errorf("unsupported type '%s'", field.Type)
+	}
+}
+
+var (
+	binaryMarshaler   = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
+	binaryUnmarshaler = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
+)
+
+func isBinaryMarshaler(typ reflect.Type) (bool, error) {
+	isBinaryMarshaler := typ.Implements(binaryMarshaler) || reflect.PointerTo(typ).Implements(binaryMarshaler)
+	isBinaryUnmarshaller := typ.Implements(binaryUnmarshaler) || reflect.PointerTo(typ).Implements(binaryUnmarshaler)
+
+	if isBinaryMarshaler != isBinaryUnmarshaller {
+		return false, fmt.Errorf("'%s' should implement both marshaller and unmarshaller", typ)
+	}
+
+	return isBinaryMarshaler && isBinaryUnmarshaller, nil
+}
+
+func hasCustomEncoders(typ reflect.Type) bool {
+	_, ok := encoders.Get(typ)
+
+	return ok
+}
+
+func validateArray(typ reflect.Type) error {
+	if typ.Elem().Kind() == reflect.Uint8 {
+		return nil
+	}
+
+	return fmt.Errorf("%s is not supported", typ)
+}
+
+func validateSlice(typ reflect.Type) error {
+	elem := typ.Elem()
+
+	switch elem.Kind() { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		return nil
+
+	case reflect.Struct:
+		_, err := StructFields(elem)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	case reflect.Array, reflect.Slice:
+		if elem.Elem().Kind() == reflect.Uint8 {
+			return nil
+		}
+
+		return fmt.Errorf("'%s' is not supported", typ)
+
+	case reflect.Pointer:
+		if err := validatePtrElem(deref(elem)); err != nil {
+			return err
+		}
+
+		return nil
+
+	default:
+		return fmt.Errorf("'%s' is not supported", typ)
+	}
+}
+
+func validatePtrElem(elemTyp reflect.Type) error {
+	switch elemTyp.Kind() { //nolint:exhaustive
+	case reflect.Struct, reflect.String:
+		return nil
+
+	case reflect.Slice, reflect.Array:
+		if elemTyp.Elem().Kind() == reflect.Uint8 {
+			return nil
+		}
+
+		fallthrough
+
+	default:
+		return fmt.Errorf("'%s' is not supported", elemTyp)
+	}
+}
+
+func validateFieldPtr(typ reflect.Type) error {
+	elem := typ.Elem()
+
+	switch elem.Kind() { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		return nil
+
+	case reflect.Pointer:
+		return validateFieldPtr(indirect(elem))
+
+	case reflect.Struct:
+		_, err := StructFields(elem)
+		if err != nil {
+			return err
+		}
+
+		return nil
+
+	case reflect.Array:
+		return validateArray(elem)
+
+	case reflect.Slice:
+		return validateSlice(elem)
+
+	case reflect.Map:
+		return validateMap(elem)
+
+	default:
+		return fmt.Errorf("'%s' is not supported", typ)
+	}
+}
+
+func validateMap(elem reflect.Type) error {
+	if err := validateMapKey(elem.Key()); err != nil {
+		return err
+	}
+
+	if err := validateMapValue(elem.Elem()); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateMapKey(key reflect.Type) error {
+	switch key.Kind() { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		return nil
+
+	default:
+		return fmt.Errorf("'%s' is not supported", key)
+	}
+}
+
+func validateMapValue(val reflect.Type) error {
+	switch val.Kind() { //nolint:exhaustive
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64, reflect.Bool, reflect.String:
+		return nil
+
+	case reflect.Struct:
+		_, err := StructFields(val)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	case reflect.Array, reflect.Slice:
+		return validateArray(val)
+
+	case reflect.Pointer:
+		return validateMapValue(indirect(val))
+
+	default:
+		return fmt.Errorf("'%s' is not supported", val)
+	}
 }

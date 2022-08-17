@@ -154,7 +154,7 @@ func TestSliceEncodingResult(t *testing.T) {
 		},
 		{
 			"wrapped values should be encoded in normal form",
-			testSliceEncodingResult([]intWrapper{{1}, {2}, {3}}, encodedWrappedInts),
+			testSliceEncodingResult([]IntWrapper{{1}, {2}, {3}}, encodedWrappedInts),
 		},
 		{
 			"wrapped values with no marshallers should be encoded in normal form",
@@ -292,6 +292,18 @@ type sliceWrapper[T any] struct {
 	Arr []T `protobuf:"1"`
 }
 
+type Valuer[T any] interface {
+	Val() T
+}
+
+type Value[T any] struct {
+	V T `protobuf:"1"`
+}
+
+func (v Value[T]) Val() T {
+	return v.V
+}
+
 func TestDisallowedTypes(t *testing.T) {
 	t.Parallel()
 
@@ -355,13 +367,8 @@ func TestDisallowedTypes(t *testing.T) {
 				t.Parallel()
 
 				arr := newSliceWrapper[Valuer[int]](&Value[int]{1}, &Value[int]{1})
-				buf, err := protoenc.Marshal(arr)
-				require.NoError(t, err)
-
-				var target sliceWrapper[Valuer[int]]
-				err = protoenc.Unmarshal(buf, &target)
+				_, err := protoenc.Marshal(arr)
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "nil interface fields are not supported")
 			},
 		},
 	}
@@ -382,7 +389,7 @@ func testDisallowedTypes[T any](t *testing.T) {
 
 	_, err := protoenc.Marshal(&original)
 	require.Error(t, err)
-	assert.Regexp(t, "(unsupported type)|(takes a struct)", err.Error())
+	assert.Regexp(t, "(is not supported)|(takes a struct)", err.Error())
 }
 
 func TestDuration(t *testing.T) {
@@ -411,24 +418,6 @@ func TestTime(t *testing.T) {
 
 	require.NoError(t, protoenc.Unmarshal(buf, &actual))
 	assert.Equal(t, expected.Arr, actual.Arr)
-}
-
-func TestSliceToArray(t *testing.T) {
-	t.Parallel()
-
-	expected := newSliceWrapper(1, 2, 3, 4, 5, 6, 7, 8, 9, 100500)
-	buf := must(protoenc.Marshal(expected))(t)
-
-	t.Log(hex.Dump(buf))
-
-	type structWithArray struct {
-		Arr [10]int `protobuf:"1"`
-	}
-
-	var actual structWithArray
-
-	require.NoError(t, protoenc.Unmarshal(buf, &actual))
-	assert.Equal(t, expected.Arr, actual.Arr[:])
 }
 
 func TestSlicesOfEmpty(t *testing.T) {

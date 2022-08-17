@@ -127,11 +127,6 @@ func putValue(dst reflect.Value, rdr *scanner) error {
 func zeroStructFields(val reflect.Value) {
 	for i := 0; i < val.NumField(); i++ {
 		field := val.Field(i)
-		if field.Kind() == reflect.Interface {
-			// Interface are not reset because the unmarshaller won't
-			// be able to instantiate it again.
-			continue
-		}
 
 		if field.CanSet() {
 			field.Set(reflect.Zero(field.Type()))
@@ -205,26 +200,8 @@ func mapEntry(dstEntry reflect.Value, buf []byte) error {
 		return errors.New("map key is missing")
 	}
 
-	// map key can only be a primitive type or a string
-	switch entryKey.Kind() { //nolint:exhaustive
-	case reflect.Struct, reflect.Array, reflect.Interface, reflect.Pointer:
-		return errors.New("map key cannot be struct, array, interface or pointer")
-	}
-
 	if err := putValue(entryKey, s); err != nil {
 		return fmt.Errorf("failed to unmarshal map key type:'%s': %w", entryKey.Type().String(), err)
-	}
-
-	// map value cannot be slice or array if ([]uint8 and [n]uint8 are exceptions)
-	switch entryVal.Kind() { //nolint:exhaustive
-	case reflect.Slice, reflect.Array:
-		if entryVal.Type().Elem() == typeByte {
-			break
-		}
-
-		fallthrough
-	case reflect.Interface:
-		return errors.New("map value cannot be non byte slice, array or interface")
 	}
 
 	// scan value
@@ -261,10 +238,7 @@ func unmarshalPrimitive(dst reflect.Value, value primitiveValue) error {
 	switch dst.Kind() { //nolint:exhaustive
 	case reflect.Pointer:
 		if dst.IsNil() {
-			err := instantiate(dst)
-			if err != nil {
-				return err
-			}
+			instantiate(dst)
 		}
 
 		return unmarshalPrimitive(dst.Elem(), value)
@@ -337,19 +311,13 @@ func unmarshalPrimitive(dst reflect.Value, value primitiveValue) error {
 
 // Instantiate an arbitrary type, handling dynamic interface types.
 // Returns a Ptr value.
-func instantiate(dst reflect.Value) error {
-	dstType := dst.Type()
+func instantiate(dst reflect.Value) {
+	dstType := dst.Type().Elem()
 
-	if dstType.Kind() == reflect.Interface {
-		return fmt.Errorf("cannot instantiate interface type %s", dstType.Name())
-	}
-
-	dst.Set(reflect.New(dstType.Elem()))
-
-	return nil
+	dst.Set(reflect.New(dstType))
 }
 
-//nolint:cyclop,gocognit,gocyclo
+//nolint:cyclop,gocyclo
 func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 	defer func() {
 		if err != nil {
@@ -407,14 +375,11 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 	switch dst.Kind() { //nolint:exhaustive
 	case reflect.Pointer:
 		if dst.IsNil() {
-			err := instantiate(dst)
-			if err != nil {
-				return err
-			}
+			instantiate(dst)
 		}
 
 		// If the pointer is to a struct
-		if deref(dst.Type()).Kind() == reflect.Struct {
+		if indirect(dst.Type()).Kind() == reflect.Struct {
 			ok, err := tryDecodeFunc(bytes, dst)
 			if err != nil {
 				return err
@@ -449,18 +414,6 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 
 		return mapEntry(dst, bytes)
 
-	case reflect.Interface:
-		// TODO: find a way to handle nil interfaces
-		if dst.IsNil() {
-			return errors.New("nil interface fields are not supported")
-		}
-
-		if enc, ok := dst.Interface().(encoding.BinaryUnmarshaler); ok {
-			return enc.UnmarshalBinary(bytes)
-		}
-
-		return Unmarshal(bytes, dst.Interface())
-
 	default:
 		return fmt.Errorf("unsupported value kind " + dst.Kind().String())
 	}
@@ -491,12 +444,6 @@ func unmarshalByteSeqeunce(dst reflect.Value, val complexValue) error {
 func slice(dst reflect.Value, val complexValue) error {
 	elemType := dst.Type().Elem()
 
-	if elemType.Kind() == reflect.Pointer {
-		if !isSlicePtrElemSupported(elemType) {
-			return fmt.Errorf("unsupported type: '%s'", dst.String())
-		}
-	}
-
 	// we only decode bytes as []byte or [n]byte field
 	if elemType == typeByte {
 		err := unmarshalByteSeqeunce(dst, val)
@@ -519,10 +466,6 @@ func slice(dst reflect.Value, val complexValue) error {
 
 	if !ok { // Other unpacked repeated types
 		// Just unpack and append one value from buf.
-		if dst.Kind() == reflect.Array {
-			return fmt.Errorf("arrays of complex types are not supported: '%s'", dst.String())
-		}
-
 		elem := reflect.New(elemType).Elem()
 
 		if err = unmarshalBytes(elem, val); err != nil {
