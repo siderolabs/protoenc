@@ -271,12 +271,12 @@ func testEncodeDecodeWrapped[T any](slc T, expected []byte) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 
-		original := OneFieldStruct[T]{Field: slc}
+		original := Value[T]{V: slc}
 		buf := must(protoenc.Marshal(&original))(t)
 
 		require.Equal(t, expected, buf)
 
-		var decoded OneFieldStruct[T]
+		var decoded Value[T]
 
 		require.NoError(t, protoenc.Unmarshal(buf, &decoded))
 		require.Equal(t, original, decoded)
@@ -340,6 +340,9 @@ func TestDisallowedTypes(t *testing.T) {
 		},
 		"map[string]string": {
 			fn: testDisallowedTypes[map[string]string],
+		},
+		"[]map[string]string": {
+			fn: testDisallowedTypes[[]map[string]string],
 		},
 		"sliceWrapper[*int]": {
 			fn: testDisallowedTypes[sliceWrapper[*int]],

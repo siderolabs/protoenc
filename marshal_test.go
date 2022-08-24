@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,7 +85,7 @@ func Test2dSlice(t *testing.T) {
 	t.Run("should fail on 2d int slice", func(t *testing.T) {
 		t.Parallel()
 
-		encoded := Slice[int]{Values: [][]int{{1, 2, 3}, {4, 5, 6}}}
+		encoded := Value[[][]int]{V: [][]int{{1, 2, 3}, {4, 5, 6}}}
 		_, err := protoenc.Marshal(&encoded)
 		require.Error(t, err)
 	})
@@ -92,7 +93,7 @@ func Test2dSlice(t *testing.T) {
 	t.Run("should fail on 2d uint16 slice", func(t *testing.T) {
 		t.Parallel()
 
-		encoded := Slice[uint16]{Values: [][]uint16{{1, 2, 3}, {4, 5, 6}}}
+		encoded := Value[[][]uint16]{V: [][]uint16{{1, 2, 3}, {4, 5, 6}}}
 		_, err := protoenc.Marshal(&encoded)
 		require.Error(t, err)
 	})
@@ -100,18 +101,14 @@ func Test2dSlice(t *testing.T) {
 	t.Run("should ok on 2d byte slice", func(t *testing.T) {
 		t.Parallel()
 
-		encoded := Slice[byte]{Values: [][]byte{{1, 2, 3}, {4, 5, 6}}}
+		encoded := Value[[][]byte]{V: [][]byte{{1, 2, 3}, {4, 5, 6}}}
 		buf := must(protoenc.Marshal(&encoded))(t)
 
-		decoded := Slice[byte]{}
+		decoded := Value[[][]byte]{}
 		require.NoError(t, protoenc.Unmarshal(buf, &decoded))
 
-		require.Equal(t, encoded.Values, decoded.Values)
+		require.Equal(t, encoded.V, decoded.V)
 	})
-}
-
-type Slice[T any] struct {
-	Values [][]T `protobuf:"1"`
 }
 
 func TestBigInt(t *testing.T) {
@@ -302,7 +299,7 @@ func TestMarshalEmpty(t *testing.T) {
 	buf := must(protoenc.Marshal(&Empty{}))(t)
 	require.Len(t, buf, 0)
 
-	buf = must(protoenc.Marshal(&OneFieldStruct[Empty]{}))(t)
+	buf = must(protoenc.Marshal(&Value[Empty]{}))(t)
 	require.Equal(t, []byte{0x0a, 0x00}, buf)
 }
 
@@ -421,13 +418,13 @@ func TestCustomEncoders(t *testing.T) {
 			testCustomEncodersDecoders(
 				encodeCustomEncoderStruct,
 				decodeCustomEncoderStruct,
-				OneFieldStruct[CustomEncoderStruct]{
-					Field: CustomEncoderStruct{
+				Value[CustomEncoderStruct]{
+					V: CustomEncoderStruct{
 						Value: 150,
 					},
 				},
-				OneFieldStruct[CustomEncoderStruct]{
-					Field: CustomEncoderStruct{
+				Value[CustomEncoderStruct]{
+					V: CustomEncoderStruct{
 						Value: 152,
 					},
 				},
@@ -437,13 +434,13 @@ func TestCustomEncoders(t *testing.T) {
 			testCustomEncodersDecoders(
 				encodeCustomEncoderStructPtr,
 				decodeCustomEncoderStructPtr,
-				OneFieldStruct[*CustomEncoderStruct]{
-					Field: &CustomEncoderStruct{
+				Value[*CustomEncoderStruct]{
+					V: &CustomEncoderStruct{
 						Value: 150,
 					},
 				},
-				OneFieldStruct[*CustomEncoderStruct]{
-					Field: &CustomEncoderStruct{
+				Value[*CustomEncoderStruct]{
+					V: &CustomEncoderStruct{
 						Value: 156,
 					},
 				},
@@ -453,14 +450,14 @@ func TestCustomEncoders(t *testing.T) {
 			testCustomEncodersDecoders(
 				encodeCustomEncoderStruct,
 				decodeCustomEncoderStruct,
-				OneFieldStruct[[]CustomEncoderStruct]{
-					Field: []CustomEncoderStruct{
+				Value[[]CustomEncoderStruct]{
+					V: []CustomEncoderStruct{
 						{Value: 150},
 						{Value: 151},
 					},
 				},
-				OneFieldStruct[[]CustomEncoderStruct]{
-					Field: []CustomEncoderStruct{
+				Value[[]CustomEncoderStruct]{
+					V: []CustomEncoderStruct{
 						{Value: 152},
 						{Value: 153},
 					},
@@ -530,10 +527,6 @@ func testCustomEncodersDecoders[V any, T any](
 	}
 }
 
-type OneFieldStruct[T any] struct {
-	Field T `protobuf:"1"`
-}
-
 func TestIncorrectCustomEncoders(t *testing.T) {
 	t.Cleanup(func() {
 		protoenc.CleanEncoderDecoder()
@@ -552,6 +545,30 @@ func TestIncorrectCustomEncoders(t *testing.T) {
 			func(slc []byte) (string, error) { return "", nil },
 		)
 	})
+}
+
+func TestMarshalMapInterface(t *testing.T) {
+	// json decodes numeric values as float64s
+	// json decoder do not support slices
+	testEncodeDecode(Value[map[string]interface{}]{
+		V: map[string]interface{}{
+			"a": 1.0,
+			"b": "2",
+			"c": true,
+			"e": map[string]interface{}{
+				"a": 1.0,
+				"g": 10.10,
+			},
+		},
+	})(t)
+}
+
+func TestMarshalTime(t *testing.T) {
+	// json decodes numeric values as float64s
+	// json decoder do not support slices
+	testEncodeDecode(Value[time.Time]{
+		V: time.Date(2019, time.January, 1, 0, 0, 0, 0, time.UTC),
+	})(t)
 }
 
 func TestResursiveTypes(t *testing.T) {

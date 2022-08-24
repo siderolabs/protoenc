@@ -51,8 +51,8 @@ func BenchmarkCustom(b *testing.B) {
 		protoenc.CleanEncoderDecoder()
 	})
 
-	o := OneFieldStruct[CustomEncoderStruct]{
-		Field: CustomEncoderStruct{
+	o := Value[CustomEncoderStruct]{
+		V: CustomEncoderStruct{
 			Value: 150,
 		},
 	}
@@ -65,9 +65,9 @@ func BenchmarkCustom(b *testing.B) {
 	b.ResetTimer()
 	b.ReportAllocs()
 
-	target := &OneFieldStruct[CustomEncoderStruct]{}
+	target := &Value[CustomEncoderStruct]{}
 	for i := 0; i < b.N; i++ {
-		*target = OneFieldStruct[CustomEncoderStruct]{}
+		*target = Value[CustomEncoderStruct]{}
 
 		err := protoenc.Unmarshal(encoded, target)
 		if err != nil {
@@ -75,7 +75,7 @@ func BenchmarkCustom(b *testing.B) {
 		}
 	}
 
-	require.Equal(b, o.Field.Value+2, target.Field.Value)
+	require.Equal(b, o.V.Value+2, target.V.Value)
 }
 
 func BenchmarkSlice(b *testing.B) {

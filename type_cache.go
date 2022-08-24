@@ -451,6 +451,10 @@ func validateFieldPtr(typ reflect.Type) error {
 }
 
 func validateMap(elem reflect.Type) error {
+	if elem == typeMapInterface {
+		return nil
+	}
+
 	if err := validateMapKey(elem.Key()); err != nil {
 		return err
 	}
