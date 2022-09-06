@@ -19,8 +19,8 @@ import (
 
 // Unmarshal a protobuf value into a Go value.
 // The caller must pass a pointer to the struct to decode into.
-func Unmarshal(buf []byte, ptr interface{}) error {
-	return unmarshal(buf, ptr)
+func Unmarshal(buf []byte, structPtr interface{}) error {
+	return unmarshal(buf, structPtr)
 }
 
 func unmarshal(buf []byte, structPtr interface{}) (returnErr error) {
@@ -41,33 +41,24 @@ func unmarshal(buf []byte, structPtr interface{}) (returnErr error) {
 		return nil
 	}
 
+	if hasCustomEncoders(reflect.TypeOf(structPtr)) {
+		return errors.New("custom decoders are not supported for top-level structs, use BinaryUnmarshaler instead")
+	}
+
 	if bu, ok := structPtr.(encoding.BinaryUnmarshaler); ok {
 		return bu.UnmarshalBinary(buf)
 	}
 
 	val := reflect.ValueOf(structPtr)
-	if val.Kind() != reflect.Pointer {
-		return errors.New("decode has been given a non pointer type")
+	if val.Kind() != reflect.Pointer || val.Type().Elem().Kind() != reflect.Struct {
+		return errors.New("unmarshal takes a pointer to struct")
 	}
 
 	return unmarshalStruct(val.Elem(), buf)
 }
 
 func unmarshalStruct(structVal reflect.Value, buf []byte) error {
-	if structVal.Kind() != reflect.Struct {
-		return errors.New("not a struct")
-	}
-
 	zeroStructFields(structVal)
-
-	ok, err := tryDecodeFunc(buf, structVal)
-	if err != nil {
-		return err
-	}
-
-	if ok {
-		return nil
-	}
 
 	structFields, err := StructFields(structVal.Type())
 	if err != nil {
@@ -398,6 +389,12 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 		return nil
 
 	case reflect.Struct:
+		if ok, err := tryDecodeFunc(bytes, dst); ok {
+			return nil
+		} else if err != nil {
+			return err
+		}
+
 		if enc, ok := dst.Addr().Interface().(encoding.BinaryUnmarshaler); ok {
 			return enc.UnmarshalBinary(bytes)
 		}

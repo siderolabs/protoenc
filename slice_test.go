@@ -300,6 +300,10 @@ type Value[T any] struct {
 	V T `protobuf:"1"`
 }
 
+func makeValue[T any](t T) Value[T] {
+	return Value[T]{V: t}
+}
+
 func (v Value[T]) Val() T {
 	return v.V
 }
@@ -392,7 +396,7 @@ func testDisallowedTypes[T any](t *testing.T) {
 
 	_, err := protoenc.Marshal(&original)
 	require.Error(t, err)
-	assert.Regexp(t, "(is not supported)|(takes a struct)", err.Error())
+	assert.Regexp(t, "(is not supported)|(takes a pointer to struct)", err.Error())
 }
 
 func TestDuration(t *testing.T) {

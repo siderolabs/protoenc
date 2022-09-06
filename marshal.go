@@ -22,7 +22,7 @@ import (
 
 // Marshal a Go struct into protocol buffer format.
 // The caller must pass a pointer to the struct to encode.
-func Marshal(ptr interface{}) (result []byte, err error) {
+func Marshal(structPtr interface{}) (result []byte, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			e, ok := recovered.(error)
@@ -36,11 +36,15 @@ func Marshal(ptr interface{}) (result []byte, err error) {
 		}
 	}()
 
-	if ptr == nil {
+	if structPtr == nil {
 		return nil, nil
 	}
 
-	if bu, ok := ptr.(encoding.BinaryMarshaler); ok {
+	if hasCustomEncoders(reflect.TypeOf(structPtr)) {
+		return nil, errors.New("custom encoders are not supported for top-level structs, use BinaryMarshaler instead")
+	}
+
+	if bu, ok := structPtr.(encoding.BinaryMarshaler); ok {
 		return bu.MarshalBinary()
 	}
 
@@ -48,9 +52,9 @@ func Marshal(ptr interface{}) (result []byte, err error) {
 		buf: make([]byte, 0, 32),
 	}
 
-	val := reflect.ValueOf(ptr)
-	if val.Kind() != reflect.Pointer {
-		return nil, errors.New("encode takes a pointer to struct")
+	val := reflect.ValueOf(structPtr)
+	if val.Kind() != reflect.Pointer || val.Type().Elem().Kind() != reflect.Struct {
+		return nil, errors.New("marshal takes a pointer to struct")
 	}
 
 	m.encodeStruct(val.Elem())
@@ -71,17 +75,6 @@ func (m *marshaller) Bytes() []byte {
 }
 
 func (m *marshaller) encodeStruct(val reflect.Value) {
-	if val.Type().Kind() != reflect.Struct {
-		panic("encodeStruct takes a struct")
-	}
-
-	res, ok := tryEncodeFunc(val)
-	if ok {
-		m.buf = append(m.buf, res...)
-
-		return
-	}
-
 	structFields, err := StructFields(val.Type())
 	if err != nil {
 		panic(err)
@@ -146,7 +139,7 @@ func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
 	return result
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocyclo
 func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 	if m.tryEncodePredefined(num, val) {
 		return
@@ -187,15 +180,15 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 
 	case reflect.Struct:
 		var b []byte
-
-		bmarshaler, ok := asBinaryMarshaler(val)
-		if ok {
-			var err error
-
-			b, err = bmarshaler.MarshalBinary()
+		if result, ok := tryEncodeFunc(val); ok {
+			b = result
+		} else if bmarshaler, ok := asBinaryMarshaler(val); ok {
+			result, err := bmarshaler.MarshalBinary()
 			if err != nil {
 				panic(err)
 			}
+
+			b = result
 		} else {
 			inner := marshaller{}
 			inner.encodeStruct(val)
