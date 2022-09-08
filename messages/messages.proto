@@ -3,6 +3,8 @@ package specs;
 
 option go_package = "github.com/siderolabs/protoenc/messages";
 
+import "google/protobuf/empty.proto";
+
 message BasicMessage {
   int64 int64 = 1;
   uint64 u_int64 = 3;
@@ -27,4 +29,22 @@ message MessageComplexFields {
   map<string, BasicMessage> mapToMsg = 1;
   map<string, BasicMessageRep> mapToMsgs = 2;
   map<string, int64> primitiveMap = 3;
+}
+
+message MessageWithEmptpy {
+  BasicMessage basic_message = 1;
+  google.protobuf.Empty empty_message = 2;
+}
+
+message EmptyMessageRep {
+  repeated google.protobuf.Empty empty_message = 1;
+}
+
+enum Enum {
+  ENUM1 = 0;
+  ENUM2 = 1;
+}
+
+message EnumMessage {
+  Enum enum_field = 1;
 }

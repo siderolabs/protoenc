@@ -5,15 +5,27 @@
 package messages_test
 
 import (
+	"encoding/hex"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/siderolabs/protoenc"
 	"github.com/siderolabs/protoenc/messages"
 )
 
 // TODO: ensure that binary output is also the same
+
+func runTestPipe[R any, RP msg[R], T any](t *testing.T, original T) {
+	encoded1 := must(protoenc.Marshal(&original))(t)
+	decoded := protoUnmarshal[R, RP](t, encoded1)
+	encoded2 := must(proto.Marshal(decoded))(t)
+	result := ourUnmarshal[T](t, encoded2)
+
+	shouldBeEqual(t, original, result)
+}
 
 //nolint:govet
 type BasicMessage struct {
@@ -30,44 +42,25 @@ func TestBasicMessage(t *testing.T) {
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := BasicMessage{
+		runTestPipe[messages.BasicMessage](t, BasicMessage{
 			Int64:      1,
 			UInt64:     2,
 			Fixed64:    protoenc.FixedU64(3),
 			SomeString: "some string",
 			SomeBytes:  []byte("some bytes"),
-		}
-
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.BasicMessage](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[BasicMessage](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		})
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := BasicMessage{}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.BasicMessage](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[BasicMessage](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.BasicMessage](t, BasicMessage{})
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := BasicMessage{SomeString: "some string"}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.BasicMessage](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[BasicMessage](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.BasicMessage](t, BasicMessage{SomeString: "some string"})
 	})
 }
 
@@ -85,44 +78,27 @@ func TestMessageRepeatedFields(t *testing.T) {
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		originalMsg := MessageRepeatedFields{
+		runTestPipe[messages.MessageRepeatedFields](t, MessageRepeatedFields{
 			Int64:      []int64{1, 2, 3},
 			UInt64:     []uint64{4, 5, 6},
 			Fixed64:    []protoenc.FixedU64{7, 8, 9},
 			SomeString: []string{"some string", "some string 2"},
 			SomeBytes:  [][]byte{[]byte("some bytes"), []byte("some bytes 2")},
-		}
-
-		encoded1 := must(protoenc.Marshal(&originalMsg))(t)
-		decodedMsg := protoUnmarshal[messages.MessageRepeatedFields](t, encoded1)
-		encoded2 := must(proto.Marshal(decodedMsg))(t)
-		resultMsg := ourUnmarshal[MessageRepeatedFields](t, encoded2)
-
-		shouldBeEqual(t, originalMsg, resultMsg)
+		})
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := MessageRepeatedFields{}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.MessageRepeatedFields](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[MessageRepeatedFields](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.MessageRepeatedFields](t, MessageRepeatedFields{})
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := MessageRepeatedFields{SomeString: []string{"some string"}}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.MessageRepeatedFields](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[MessageRepeatedFields](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.MessageRepeatedFields](t, MessageRepeatedFields{
+			SomeString: []string{"some string"},
+		})
 	})
 }
 
@@ -136,7 +112,7 @@ func TestBasicMessageRep(t *testing.T) {
 	t.Run("check that the outputs of both messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		originalMsg := BasicMessageRep{
+		runTestPipe[messages.BasicMessageRep](t, BasicMessageRep{
 			BasicMessage: []BasicMessage{
 				{
 					Int64:      1,
@@ -153,43 +129,25 @@ func TestBasicMessageRep(t *testing.T) {
 					SomeBytes:  []byte("hot bytes"),
 				},
 			},
-		}
-		encoded1 := must(protoenc.Marshal(&originalMsg))(t)
-		decodedMsg := protoUnmarshal[messages.BasicMessageRep](t, encoded1)
-		encoded2 := must(proto.Marshal(decodedMsg))(t)
-		resultMsg := ourUnmarshal[BasicMessageRep](t, encoded2)
-
-		shouldBeEqual(t, originalMsg, resultMsg)
+		})
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := BasicMessageRep{}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.BasicMessageRep](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[BasicMessageRep](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.BasicMessageRep](t, BasicMessageRep{})
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := BasicMessageRep{
+		runTestPipe[messages.BasicMessageRep](t, BasicMessageRep{
 			BasicMessage: []BasicMessage{
 				{
 					Fixed64: protoenc.FixedU64(3),
 				},
 			},
-		}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.BasicMessageRep](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[BasicMessageRep](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		})
 	})
 }
 
@@ -259,24 +217,14 @@ func TestMessageComplexFields(t *testing.T) {
 				"empty": 0,
 			},
 		}
-		encoded1 := must(protoenc.Marshal(&originalMsg))(t)
-		decodedMsg := protoUnmarshal[messages.MessageComplexFields](t, encoded1)
-		encoded2 := must(proto.Marshal(decodedMsg))(t)
-		resultMsg := ourUnmarshal[MessageComplexFields](t, encoded2)
 
-		shouldBeEqual(t, originalMsg, resultMsg)
+		runTestPipe[messages.MessageComplexFields](t, originalMsg)
 	})
 
 	t.Run("check that the outputs of both zero messages are the same", func(t *testing.T) {
 		t.Parallel()
 
-		ourBasicMessage := MessageComplexFields{}
-		encoded1 := must(protoenc.Marshal(&ourBasicMessage))(t)
-		basicMessage := protoUnmarshal[messages.MessageComplexFields](t, encoded1)
-		encoded2 := must(proto.Marshal(basicMessage))(t)
-		decodedMessage := ourUnmarshal[MessageComplexFields](t, encoded2)
-
-		shouldBeEqual(t, ourBasicMessage, decodedMessage)
+		runTestPipe[messages.MessageComplexFields](t, MessageComplexFields{})
 	})
 
 	t.Run("check that the outputs of both somewhat empty messages are the same", func(t *testing.T) {
@@ -286,6 +234,9 @@ func TestMessageComplexFields(t *testing.T) {
 			MapToMsg: map[string]BasicMessage{
 				"key": {
 					Int64: 1,
+				},
+				"": {
+					Int64: 30,
 				},
 			},
 			MapToMsgs: map[string]BasicMessageRep{
@@ -316,11 +267,82 @@ func TestMessageComplexFields(t *testing.T) {
 				"key": 1,
 			},
 		}
-		encoded1 := must(protoenc.Marshal(&originalMsg))(t)
-		decodedMsg := protoUnmarshal[messages.MessageComplexFields](t, encoded1)
-		encoded2 := must(proto.Marshal(decodedMsg))(t)
-		resultMsg := ourUnmarshal[MessageComplexFields](t, encoded2)
 
-		shouldBeEqual(t, originalMsg, resultMsg)
+		runTestPipe[messages.MessageComplexFields](t, originalMsg)
 	})
+}
+
+func TestEmptyMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty message", func(t *testing.T) {
+		t.Parallel()
+
+		type emptyMessage struct{}
+
+		runTestPipe[emptypb.Empty](t, emptyMessage{})
+	})
+
+	t.Run("slice of empty messages", func(t *testing.T) {
+		t.Parallel()
+
+		type emptyMessage struct{}
+
+		type emptyMessageRep struct {
+			EmptyMessage []emptyMessage `protobuf:"1"`
+		}
+
+		runTestPipe[messages.EmptyMessageRep](t, emptyMessageRep{
+			EmptyMessage: make([]emptyMessage, 10),
+		})
+	})
+
+	t.Run("test message containing empty message", func(t *testing.T) {
+		t.Parallel()
+
+		type emptyMessage struct{}
+
+		type messageWithEmptpy struct { //nolint:govet
+			BasicMessage BasicMessage `protobuf:"1"`
+			EmptyMessage emptyMessage `protobuf:"2"`
+		}
+
+		runTestPipe[messages.MessageWithEmptpy](t, messageWithEmptpy{
+			BasicMessage: BasicMessage{
+				Int64:      1,
+				UInt64:     2,
+				Fixed64:    protoenc.FixedU64(3),
+				SomeString: "some string",
+				SomeBytes:  []byte("some bytes"),
+			},
+			EmptyMessage: emptyMessage{},
+		})
+	})
+}
+
+func TestEnumMessage(t *testing.T) {
+	// This test ensures that we can decode a message with an enum field.
+	// Even tho we use fixed 32-bit values for encoding enums (unlike protobuf) decoding into int8-16s should still work.
+	t.Parallel()
+
+	type Enum int8
+
+	type EnumMessage struct {
+		EnumField Enum `protobuf:"1"`
+	}
+
+	original := messages.EnumMessage{
+		EnumField: messages.Enum_ENUM2,
+	}
+
+	encoded, err := proto.Marshal(&original)
+	require.NoError(t, err)
+
+	t.Log("\n", hex.Dump(encoded))
+
+	decoded := EnumMessage{}
+	err = protoenc.Unmarshal(encoded, &decoded)
+	require.NoError(t, err)
+
+	require.EqualValues(t, original.EnumField, decoded.EnumField)
 }
