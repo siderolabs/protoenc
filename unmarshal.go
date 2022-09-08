@@ -439,6 +439,7 @@ func unmarshalByteSeqeunce(dst reflect.Value, val complexValue) error {
 }
 
 func slice(dst reflect.Value, val complexValue) error {
+	// TODO: this code doesn't support the case when slice is encoded in several chunks across the message
 	elemType := dst.Type().Elem()
 
 	// we only decode bytes as []byte or [n]byte field

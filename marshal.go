@@ -151,12 +151,12 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 		putBool(m, val.Bool())
 
 	case reflect.Int8, reflect.Int16:
-		putTag(m, num, protowire.Fixed32Type)
-		putInt32(m, int32(val.Int()))
+		putTag(m, num, protowire.VarintType)
+		putUVarint(m, val.Int())
 
 	case reflect.Uint8, reflect.Uint16:
-		putTag(m, num, protowire.Fixed32Type)
-		putInt32(m, int32(val.Uint()))
+		putTag(m, num, protowire.VarintType)
+		putUVarint(m, val.Uint())
 
 	case reflect.Int, reflect.Int32, reflect.Int64:
 		putTag(m, num, protowire.VarintType)
@@ -399,12 +399,12 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 	switch elem.Kind() { //nolint:exhaustive
 	case reflect.Int8, reflect.Int16:
 		for i := 0; i < sliceLen; i++ {
-			putInt32(&result, int32(val.Index(i).Int()))
+			putUVarint(&result, val.Index(i).Int())
 		}
 
 	case reflect.Uint8, reflect.Uint16:
 		for i := 0; i < sliceLen; i++ {
-			putInt32(&result, uint32(val.Index(i).Uint()))
+			putUVarint(&result, val.Index(i).Uint())
 		}
 
 	case reflect.Bool:

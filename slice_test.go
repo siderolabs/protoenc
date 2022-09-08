@@ -198,10 +198,10 @@ func testSliceEncodingResult[T any](slc []T, expected []byte) func(t *testing.T)
 func TestSmallIntegers(t *testing.T) {
 	t.Parallel()
 
-	encodedBytes := hexToBytes(t, "0a 03 01 FF 03")
-	encodedFixed := hexToBytes(t, "0a 0c [01 00 00 00] [ff 00 00 00] [03 00 00 00]")
-	encodedFixedNegative := hexToBytes(t, "0a 0c [01 00 00 00] [ff ff ff ff] [03 00 00 00]")
-	encodedUint16s := hexToBytes(t, "0a 0c [01 00 00 00] [ff ff 00 00] [03 00 00 00]")
+	encodedBytes := hexToBytes(t, "0A 03 01 FF 03")
+	encodedFixed := hexToBytes(t, "0A 04 01 FF 01 03")
+	encodedFixedNegative := hexToBytes(t, "0A 0C [01] [FF FF FF FF FF FF FF FF FF 01] [03]")
+	encodedUint16s := hexToBytes(t, "0A 05 [01] [FF FF 03] [03]")
 
 	type customByte byte
 
@@ -215,7 +215,7 @@ func TestSmallIntegers(t *testing.T) {
 		CustomByte customByte `protobuf:"5"`
 	}
 
-	encodedCustomType := hexToBytes(t, "0a 19 [0d [ff ff ff ff]] [1d [ff ff 00 00]] [15 [ff ff ff ff]] [25 [ff 00 00 00]] [2d [ff 00 00 00]]")
+	encodedCustomType := hexToBytes(t, "0a 20 [08 [FF FF FF FF FF FF FF FF FF 01] 18 [FF FF 03] 10 [FF FF FF FF FF FF FF FF FF 01] 20 [FF 01] 28 [FF 01]]")
 
 	tests := []struct { //nolint:govet
 		name string
@@ -226,23 +226,23 @@ func TestSmallIntegers(t *testing.T) {
 			testEncodeDecodeWrapped([...]byte{1, 0xFF, 3}, encodedBytes),
 		},
 		{
-			"array of custom byte types should be encoded in 'fixed32' form",
+			"array of custom byte type should be encoded in 'varint' form",
 			testEncodeDecodeWrapped([...]customByte{1, 0xFF, 3}, encodedFixed),
 		},
 		{
-			"slice of custom byte type should be encoded in 'fixed32' form",
+			"slice of custom byte type should be encoded in 'varint' form",
 			testEncodeDecodeWrapped([]customByte{1, 0xFF, 3}, encodedFixed),
 		},
 		{
-			"slice of int8 should be encoded in 'fixed32' form",
+			"slice of int8 should be encoded in 'varint' form",
 			testEncodeDecodeWrapped([]int8{1, -1, 3}, encodedFixedNegative),
 		},
 		{
-			"slice of int16 type should be encoded in 'fixed32' form",
+			"slice of int16 type should be encoded in 'varint' form",
 			testEncodeDecodeWrapped([]int16{1, -1, 3}, encodedFixedNegative),
 		},
 		{
-			"slice of uint16 type should be encoded in 'fixed32' form",
+			"slice of uint16 type should be encoded in 'varint' form",
 			testEncodeDecodeWrapped([]uint16{1, 0xFFFF, 3}, encodedUint16s),
 		},
 		{
@@ -250,7 +250,7 @@ func TestSmallIntegers(t *testing.T) {
 			testEncodeDecodeWrapped(customSlice{1, 0xFF, 3}, encodedBytes),
 		},
 		{
-			"customType should be encoded in 'fixed32' form",
+			"customType should be encoded in 'varint' form",
 			testEncodeDecodeWrapped(customType{
 				Int16:      -1,
 				Uint16:     0xFFFF,
@@ -269,6 +269,7 @@ func TestSmallIntegers(t *testing.T) {
 
 func testEncodeDecodeWrapped[T any](slc T, expected []byte) func(t *testing.T) {
 	return func(t *testing.T) {
+		t.Helper()
 		t.Parallel()
 
 		original := Value[T]{V: slc}

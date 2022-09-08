@@ -5,11 +5,9 @@
 package messages_test
 
 import (
-	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/siderolabs/protoenc"
@@ -17,15 +15,6 @@ import (
 )
 
 // TODO: ensure that binary output is also the same
-
-func runTestPipe[R any, RP msg[R], T any](t *testing.T, original T) {
-	encoded1 := must(protoenc.Marshal(&original))(t)
-	decoded := protoUnmarshal[R, RP](t, encoded1)
-	encoded2 := must(proto.Marshal(decoded))(t)
-	result := ourUnmarshal[T](t, encoded2)
-
-	shouldBeEqual(t, original, result)
-}
 
 //nolint:govet
 type BasicMessage struct {
@@ -320,9 +309,27 @@ func TestEmptyMessage(t *testing.T) {
 	})
 }
 
+func TestEnumMessage_CompatibleOldScheme(t *testing.T) {
+	// This test ensures that we can decode a message with an enum field encoded by previus version of our encoder.
+	t.Parallel()
+
+	encoded := []byte{0x0d, 0x01, 0x00, 0x00, 0x00}
+
+	type Enum int8
+
+	type EnumMessage struct {
+		EnumField Enum `protobuf:"1"`
+	}
+
+	dest := EnumMessage{}
+
+	err := protoenc.Unmarshal(encoded, &dest)
+	require.NoError(t, err)
+
+	require.EqualValues(t, dest.EnumField, 1)
+}
+
 func TestEnumMessage(t *testing.T) {
-	// This test ensures that we can decode a message with an enum field.
-	// Even tho we use fixed 32-bit values for encoding enums (unlike protobuf) decoding into int8-16s should still work.
 	t.Parallel()
 
 	type Enum int8
@@ -331,18 +338,7 @@ func TestEnumMessage(t *testing.T) {
 		EnumField Enum `protobuf:"1"`
 	}
 
-	original := messages.EnumMessage{
-		EnumField: messages.Enum_ENUM2,
-	}
-
-	encoded, err := proto.Marshal(&original)
-	require.NoError(t, err)
-
-	t.Log("\n", hex.Dump(encoded))
-
-	decoded := EnumMessage{}
-	err = protoenc.Unmarshal(encoded, &decoded)
-	require.NoError(t, err)
-
-	require.EqualValues(t, original.EnumField, decoded.EnumField)
+	runTestPipe[messages.EnumMessage](t, EnumMessage{
+		EnumField: 1,
+	})
 }

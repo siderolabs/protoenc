@@ -300,7 +300,7 @@ func (s *dataScanner) Wiretype() protowire.Type {
 func getDataScannerFor(eltype reflect.Type, buf []byte) (dataScanner, bool, error) {
 	switch eltype.Kind() { //nolint:exhaustive
 	case reflect.Uint8, reflect.Uint16, reflect.Int8, reflect.Int16:
-		return makeDataScanner(protowire.Fixed32Type, buf), true, nil
+		return makeDataScanner(protowire.VarintType, buf), true, nil
 
 	case reflect.Bool, reflect.Int32, reflect.Int64, reflect.Int,
 		reflect.Uint32, reflect.Uint64, reflect.Uint:

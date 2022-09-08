@@ -47,12 +47,22 @@ type msg[T any] interface {
 	proto.Message
 }
 
+func runTestPipe[R any, RP msg[R], T any](t *testing.T, original T) {
+	encoded1 := must(protoenc.Marshal(&original))(t)
+	decoded := protoUnmarshal[R, RP](t, encoded1)
+	encoded2 := must(proto.Marshal(decoded))(t)
+	result := ourUnmarshal[T](t, encoded2)
+
+	shouldBeEqual(t, original, result)
+}
+
 func protoUnmarshal[T any, V msg[T]](t *testing.T, data []byte) V {
 	t.Helper()
 
 	var msg T
 
-	err := proto.Unmarshal(data, V(&msg))
+	err := proto.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(data, V(&msg))
+
 	require.NoError(t, err)
 
 	return &msg
