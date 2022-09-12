@@ -234,3 +234,9 @@ func CleanEncoderDecoder() {
 	encoders = syncMap[reflect.Type, encoder]{}
 	decoders = syncMap[reflect.Type, decoder]{}
 }
+
+func hasCustomEncoders(typ reflect.Type) bool {
+	_, ok := encoders.Get(typ)
+
+	return ok
+}

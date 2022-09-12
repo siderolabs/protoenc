@@ -118,6 +118,10 @@ func (v *Value[T]) Val() T {
 	return v.V
 }
 
+func makeValue[T any](t T) Value[T] {
+	return Value[T]{V: t}
+}
+
 func Test2dSlice(t *testing.T) {
 	t.Parallel()
 
@@ -620,4 +624,73 @@ func TestMarshalMapInterface(t *testing.T) {
 			"g": 10.10,
 		},
 	}})(t)
+}
+
+type MarshallableString struct {
+	Value string
+}
+
+func (m *MarshallableString) MarshalBinary() ([]byte, error) {
+	return []byte(m.Value + "+MarshalBinary"), nil
+}
+
+func (m *MarshallableString) UnmarshalBinary(data []byte) error {
+	m.Value = string(data) + "+UnmarshalBinary"
+
+	return nil
+}
+
+func TestCustomEncodersWithMarshalBinary(t *testing.T) {
+	t.Cleanup(func() {
+		protoenc.CleanEncoderDecoder()
+	})
+
+	protoenc.RegisterEncoderDecoder(
+		func(v *MarshallableString) ([]byte, error) { return []byte(v.Value + "+EncoderPtr"), nil },
+		func(slc []byte) (*MarshallableString, error) {
+			return &MarshallableString{
+				Value: string(slc) + "+DecoderPtr",
+			}, nil
+		},
+	)
+
+	protoenc.RegisterEncoderDecoder(
+		func(v MarshallableString) ([]byte, error) { return []byte(v.Value + "+Encoder"), nil },
+		func(slc []byte) (MarshallableString, error) {
+			return MarshallableString{
+				Value: string(slc) + "+Decoder",
+			}, nil
+		},
+	)
+
+	type T = MarshallableString
+
+	sliceOriginal := []MarshallableString{{Value: "MyVal"}, {Value: "MyVal2"}}
+	sliceExpected := []MarshallableString{{Value: "MyVal+MarshalBinary+Decoder"}, {Value: "MyVal2+MarshalBinary+Decoder"}}
+
+	tests := map[string]struct {
+		fn func(t *testing.T)
+	}{
+		"custom encoder on struct field":         {testEncodeDecodeResult(makeValue(T{Value: "MyVal"}), makeValue(T{Value: "MyVal+MarshalBinary+Decoder"}))},
+		"custom encoder on struct field pointer": {testEncodeDecodeResult(makeValue(&T{Value: "MyVal"}), makeValue(&T{Value: "MyVal+EncoderPtr+DecoderPtr"}))},
+		"custom encoder on slice":                {testEncodeDecodeResult(makeValue(sliceOriginal), makeValue(sliceExpected))},
+	}
+
+	for name, test := range tests {
+		t.Run(name, test.fn)
+	}
+}
+
+func testEncodeDecodeResult[V any](original, expected V) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Helper()
+		encoded := must(protoenc.Marshal(&original))(t)
+
+		t.Logf("\n%s", hex.Dump(encoded))
+
+		var result V
+
+		require.NoError(t, protoenc.Unmarshal(encoded, &result))
+		require.Equal(t, expected, result)
+	}
 }
