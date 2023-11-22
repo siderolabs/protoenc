@@ -7,3 +7,7 @@ spec:
     - source: /messages/messages.proto
       genGateway: false
       external: false
+---
+kind: auto.CI
+spec:
+  provider: drone

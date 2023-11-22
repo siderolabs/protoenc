@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-07-21T18:10:01Z by kres latest.
+# Generated on 2023-11-22T17:06:36Z by kres latest.
 
 kind: pipeline
 type: kubernetes
@@ -155,7 +155,7 @@ steps:
     - sha512
     draft: true
     files:
-    - _out/*
+    []
     note: _out/RELEASE_NOTES.md
   volumes:
   - name: outer-docker-socket
@@ -174,7 +174,7 @@ steps:
 
 services:
 - name: docker
-  image: docker:20.10-dind
+  image: docker:24.0-dind
   entrypoint:
   - dockerd
   commands:
@@ -184,6 +184,8 @@ services:
   - --log-level=error
   privileged: true
   volumes:
+  - name: dev
+    path: /dev
   - name: outer-docker-socket
     path: /var/outer-run
   - name: docker-socket
@@ -206,6 +208,19 @@ volumes:
 - name: ssh
   temp:
     medium: memory
+- name: dev
+  host:
+    path: /dev
+
+trigger:
+  branch:
+    exclude:
+    - renovate/*
+    - dependabot/*
+  event:
+    exclude:
+    - promote
+    - cron
 
 ---
 kind: pipeline
@@ -234,6 +249,10 @@ steps:
     - failure
 
 trigger:
+  branch:
+    exclude:
+    - renovate/*
+    - dependabot/*
   status:
   - success
   - failure
