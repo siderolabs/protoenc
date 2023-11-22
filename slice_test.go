@@ -33,7 +33,7 @@ func TestSliceEncodingDecoding(t *testing.T) {
 		} `protobuf:"6"`
 	}
 
-	type localMap struct { //nolint:unused
+	type localMap struct {
 		A map[int]int `protobuf:"1"`
 	}
 
@@ -200,7 +200,7 @@ func TestSmallIntegers(t *testing.T) {
 
 	encodedBytes := hexToBytes(t, "0A 03 01 FF 03")
 	encodedFixed := hexToBytes(t, "0A 04 01 FF 01 03")
-	encodedFixedNegative := hexToBytes(t, "0A 0C [01] [FF FF FF FF FF FF FF FF FF 01] [03]")
+	encodedFixedNegative := hexToBytes(t, "0A 0C [01] [FF FF FF FF FF FF FF FF FF 01] [03]") //nolint:dupword
 	encodedUint16s := hexToBytes(t, "0A 05 [01] [FF FF 03] [03]")
 
 	type customByte byte
@@ -215,7 +215,7 @@ func TestSmallIntegers(t *testing.T) {
 		CustomByte customByte `protobuf:"5"`
 	}
 
-	encodedCustomType := hexToBytes(t, "0a 20 [08 [FF FF FF FF FF FF FF FF FF 01] 18 [FF FF 03] 10 [FF FF FF FF FF FF FF FF FF 01] 20 [FF 01] 28 [FF 01]]")
+	encodedCustomType := hexToBytes(t, "0a 20 [08 [FF FF FF FF FF FF FF FF FF 01] 18 [FF FF 03] 10 [FF FF FF FF FF FF FF FF FF 01] 20 [FF 01] 28 [FF 01]]") //nolint:dupword
 
 	tests := []struct { //nolint:govet
 		name string
@@ -312,19 +312,19 @@ func (v Value[T]) Val() T {
 func TestDisallowedTypes(t *testing.T) {
 	t.Parallel()
 
-	type localMapOfSlices struct { //nolint:unused
+	type localMapOfSlices struct {
 		A map[int][]int `protobuf:"1"`
 	}
 
-	type complexKey struct { //nolint:unused
+	type complexKey struct {
 		A int `protobuf:"1"`
 	}
 
-	type localMapWithComplexKey struct { //nolint:unused
+	type localMapWithComplexKey struct {
 		A map[complexKey]int `protobuf:"1"`
 	}
 
-	type localMapWithPtrKey struct { //nolint:unused
+	type localMapWithPtrKey struct {
 		A map[*int]int `protobuf:"1"`
 	}
 

@@ -1,12 +1,12 @@
 module github.com/siderolabs/protoenc
 
-go 1.19
+go 1.21.3
 
 require (
-	github.com/brianvoe/gofakeit/v6 v6.17.0
-	github.com/google/go-cmp v0.5.8
-	github.com/stretchr/testify v1.8.0
-	google.golang.org/protobuf v1.28.0
+	github.com/brianvoe/gofakeit/v6 v6.24.0
+	github.com/google/go-cmp v0.6.0
+	github.com/stretchr/testify v1.8.4
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

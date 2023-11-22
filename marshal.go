@@ -94,9 +94,9 @@ func (m *marshaller) encodeFields(val reflect.Value, fieldsData []FieldData) {
 		if r := recover(); r != nil {
 			if !fieldData.IsZero() {
 				panic(fmt.Errorf("%s (field %s)", r, fieldData.Field.Name))
-			} else {
-				panic(r)
 			}
+
+			panic(r)
 		}
 	}()
 
