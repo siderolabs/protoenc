@@ -534,15 +534,15 @@ func TestIncorrectCustomEncoders(t *testing.T) {
 
 	require.Panics(t, func() {
 		protoenc.RegisterEncoderDecoder(
-			func(v []CustomEncoderStruct) ([]byte, error) { return nil, nil },
-			func(slc []byte) ([]CustomEncoderStruct, error) { return nil, nil },
+			func([]CustomEncoderStruct) ([]byte, error) { return nil, nil },
+			func([]byte) ([]CustomEncoderStruct, error) { return nil, nil },
 		)
 	})
 
 	require.Panics(t, func() {
 		protoenc.RegisterEncoderDecoder(
-			func(v string) ([]byte, error) { return nil, nil },
-			func(slc []byte) (string, error) { return "", nil },
+			func(string) ([]byte, error) { return nil, nil },
+			func([]byte) (string, error) { return "", nil },
 		)
 	})
 }
@@ -577,6 +577,7 @@ func TestResursiveTypes(t *testing.T) {
 			Next  *Recursive `protobuf:"2"`
 			Value int        `protobuf:"1"`
 		}
+
 		testEncodeDecode(Recursive{
 			Value: 1,
 			Next: &Recursive{
@@ -593,6 +594,7 @@ func TestResursiveTypes(t *testing.T) {
 			Next  []Recursive `protobuf:"2"`
 			Value int         `protobuf:"1"`
 		}
+
 		testEncodeDecode(Recursive{
 			Value: 1,
 			Next: []Recursive{
@@ -626,6 +628,7 @@ func TestResursiveTypes(t *testing.T) {
 			Next  map[string]Recursive `protobuf:"2"`
 			Value int                  `protobuf:"1"`
 		}
+
 		testEncodeDecode(
 			Recursive{
 				Value: 1,

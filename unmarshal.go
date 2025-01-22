@@ -296,7 +296,7 @@ func unmarshalPrimitive(dst reflect.Value, value primitiveValue) error {
 		return nil
 
 	default:
-		return fmt.Errorf("unsupported primitive kind " + dst.Kind().String())
+		return errors.New("unsupported primitive kind " + dst.Kind().String())
 	}
 }
 
@@ -412,7 +412,7 @@ func unmarshalBytes(dst reflect.Value, value complexValue) (err error) {
 		return mapEntry(dst, bytes)
 
 	default:
-		return fmt.Errorf("unsupported value kind " + dst.Kind().String())
+		return errors.New("unsupported value kind " + dst.Kind().String())
 	}
 }
 

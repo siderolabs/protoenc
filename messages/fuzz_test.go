@@ -25,6 +25,7 @@ func FuzzBasicMessage(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var ourBasicMessage BasicMessage
+
 		err := protoenc.Unmarshal(data, &ourBasicMessage)
 		if err != nil {
 			errText := err.Error()

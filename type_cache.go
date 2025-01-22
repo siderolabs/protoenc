@@ -170,7 +170,7 @@ func (sm *syncMap[K, V]) Get(k K) (V, bool) {
 		return zero, false
 	}
 
-	return value.(V), true //nolint:forcetypeassert
+	return value.(V), true //nolint:forcetypeassert,errcheck
 }
 
 func (sm *syncMap[K, V]) Add(k K, v V) { sm.m.Store(k, v) }
