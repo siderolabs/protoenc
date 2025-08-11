@@ -1,8 +1,8 @@
-# syntax = docker/dockerfile-upstream:1.12.1-labs
+# syntax = docker/dockerfile-upstream:1.17.1-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2025-01-22T19:26:59Z by kres 3075de9.
+# Generated on 2025-08-11T15:54:57Z by kres 79636f7.
 
 ARG TOOLCHAIN
 
@@ -25,24 +25,27 @@ ARG GOEXPERIMENT
 ENV GOEXPERIMENT=${GOEXPERIMENT}
 ENV GOPATH=/go
 ARG GOIMPORTS_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install golang.org/x/tools/cmd/goimports@v${GOIMPORTS_VERSION}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install golang.org/x/tools/cmd/goimports@v${GOIMPORTS_VERSION}
 RUN mv /go/bin/goimports /bin
+ARG GOMOCK_VERSION
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install go.uber.org/mock/mockgen@v${GOMOCK_VERSION}
+RUN mv /go/bin/mockgen /bin
 ARG PROTOBUF_GO_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go /bin
 ARG GRPC_GO_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${GRPC_GO_VERSION}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${GRPC_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go-grpc /bin
 ARG GRPC_GATEWAY_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION}
 RUN mv /go/bin/protoc-gen-grpc-gateway /bin
 ARG DEEPCOPY_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install github.com/siderolabs/deep-copy@${DEEPCOPY_VERSION} \
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install github.com/siderolabs/deep-copy@${DEEPCOPY_VERSION} \
 	&& mv /go/bin/deep-copy /bin/deep-copy
 ARG GOLANGCILINT_VERSION
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCILINT_VERSION} \
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@${GOLANGCILINT_VERSION} \
 	&& mv /go/bin/golangci-lint /bin/golangci-lint
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install golang.org/x/vuln/cmd/govulncheck@latest \
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go install golang.org/x/vuln/cmd/govulncheck@latest \
 	&& mv /go/bin/govulncheck /bin/govulncheck
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
@@ -54,8 +57,8 @@ WORKDIR /src
 COPY go.mod go.mod
 COPY go.sum go.sum
 RUN cd .
-RUN --mount=type=cache,target=/go/pkg go mod download
-RUN --mount=type=cache,target=/go/pkg go mod verify
+RUN --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go mod download
+RUN --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go mod verify
 COPY ./messages ./messages
 COPY ./benchmarks_test.go ./benchmarks_test.go
 COPY ./example_test.go ./example_test.go
@@ -74,7 +77,7 @@ COPY ./slice_test.go ./slice_test.go
 COPY ./type_cache.go ./type_cache.go
 COPY ./unmarshal.go ./unmarshal.go
 COPY ./unmarshal_fastpath.go ./unmarshal_fastpath.go
-RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
+RUN --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg go list -mod=readonly all >/dev/null
 
 # runs protobuf compiler
 FROM tools AS proto-compile
@@ -93,25 +96,24 @@ FROM base AS lint-golangci-lint
 WORKDIR /src
 COPY .golangci.yml .
 ENV GOGC=50
-RUN golangci-lint config verify --config .golangci.yml
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/root/.cache/golangci-lint --mount=type=cache,target=/go/pkg golangci-lint run --config .golangci.yml
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/root/.cache/golangci-lint,id=protoenc/root/.cache/golangci-lint,sharing=locked --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg golangci-lint run --config .golangci.yml
 
 # runs govulncheck
 FROM base AS lint-govulncheck
 WORKDIR /src
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg govulncheck ./...
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg govulncheck ./...
 
 # runs unit-tests with race detector
 FROM base AS unit-tests-race
 WORKDIR /src
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp CGO_ENABLED=1 go test -v -race -count 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg --mount=type=cache,target=/tmp,id=protoenc/tmp CGO_ENABLED=1 go test -race ${TESTPKGS}
 
 # runs unit-tests
 FROM base AS unit-tests-run
 WORKDIR /src
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp go test -v -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} -count 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=protoenc/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=protoenc/go/pkg --mount=type=cache,target=/tmp,id=protoenc/tmp go test -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} ${TESTPKGS}
 
 # cleaned up specs and compiled versions
 FROM scratch AS generate

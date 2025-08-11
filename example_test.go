@@ -65,7 +65,7 @@ type WithString struct {
 	Last  string `protobuf:"3"`
 }
 
-func Example_RepeatedToSingleAndBack() { //nolint:govet
+func Example_repeatedToSingleAndBack() { //nolint:govet
 	withString := WithString{
 		First: 9,
 		Str:   "a",

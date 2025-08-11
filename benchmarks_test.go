@@ -28,7 +28,7 @@ func BenchmarkEncode(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		s = MyStruct{
 			A: int32(i),
 			B: int64(i),
@@ -66,7 +66,7 @@ func BenchmarkCustom(b *testing.B) {
 	b.ReportAllocs()
 
 	target := &Value[CustomEncoderStruct]{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		*target = Value[CustomEncoderStruct]{}
 
 		err := protoenc.Unmarshal(encoded, target)
@@ -100,7 +100,7 @@ func BenchmarkSlice(b *testing.B) {
 	b.ReportAllocs()
 
 	target := &structType{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		*target = structType{}
 
 		err := protoenc.Unmarshal(encoded, target)
@@ -134,7 +134,7 @@ func BenchmarkString(b *testing.B) {
 	b.ReportAllocs()
 
 	target := &structType{}
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		*target = structType{}
 
 		err := protoenc.Unmarshal(encoded, target)

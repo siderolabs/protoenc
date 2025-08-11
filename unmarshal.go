@@ -116,7 +116,7 @@ func putValue(dst reflect.Value, rdr *scanner) error {
 }
 
 func zeroStructFields(val reflect.Value) {
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		field := val.Field(i)
 
 		if field.CanSet() {
@@ -427,7 +427,7 @@ func unmarshalByteSeqeunce(dst reflect.Value, val complexValue) error {
 			return errors.New("array length and buffer length differ")
 		}
 
-		for i := 0; i < dst.Len(); i++ {
+		for i := range dst.Len() {
 			// no SetByte method in reflect so has to pass down by uint64
 			dst.Index(i).SetUint(uint64(unmarshalBytes[i]))
 		}

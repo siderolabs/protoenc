@@ -126,7 +126,7 @@ func fieldByIndex(structVal reflect.Value, data FieldData) reflect.Value {
 
 	var result reflect.Value
 
-	for i := 0; i < len(data.FieldIndex); i++ {
+	for i := range len(data.FieldIndex) {
 		index := data.FieldIndex[:i+1]
 
 		result = structVal.FieldByIndex(index)
@@ -362,22 +362,22 @@ func (m *marshaller) encodeSlice(key protowire.Number, val reflect.Value) {
 
 	case typeFixedS64s:
 		slice := val.Interface().([]FixedS64) //nolint:errcheck,forcetypeassert
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt64(&result, slice[i])
 		}
 	case typeFixedS32s:
 		slice := val.Interface().([]FixedS32) //nolint:errcheck,forcetypeassert
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt32(&result, slice[i])
 		}
 	case typeFixedU64s:
 		slice := val.Interface().([]FixedU64) //nolint:errcheck,forcetypeassert
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt64(&result, slice[i])
 		}
 	case typeFixedU32s:
 		slice := val.Interface().([]FixedU32) //nolint:errcheck,forcetypeassert
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt32(&result, slice[i])
 		}
 	default:
@@ -398,42 +398,42 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 
 	switch elem.Kind() { //nolint:exhaustive
 	case reflect.Int8, reflect.Int16:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putUVarint(&result, val.Index(i).Int())
 		}
 
 	case reflect.Uint8, reflect.Uint16:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putUVarint(&result, val.Index(i).Uint())
 		}
 
 	case reflect.Bool:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putBool(&result, val.Index(i).Bool())
 		}
 
 	case reflect.Int, reflect.Int32, reflect.Int64:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putUVarint(&result, val.Index(i).Int())
 		}
 
 	case reflect.Uint, reflect.Uint32, reflect.Uint64:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putUVarint(&result, val.Index(i).Uint())
 		}
 
 	case reflect.Float32:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt32(&result, math.Float32bits(float32(val.Index(i).Float())))
 		}
 
 	case reflect.Float64:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			putInt64(&result, math.Float64bits(val.Index(i).Float()))
 		}
 
 	case reflect.Pointer:
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			m.encodeValue(key, val.Index(i))
 		}
 
@@ -443,7 +443,7 @@ func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 		panic(fmt.Errorf("unsupported type %s", val.Type().String()))
 
 	default: // Write each element as a separate key,value pair
-		for i := 0; i < sliceLen; i++ {
+		for i := range sliceLen {
 			m.encodeValue(key, val.Index(i))
 		}
 

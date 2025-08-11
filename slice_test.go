@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brianvoe/gofakeit/v6"
+	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -72,9 +72,9 @@ func testSlice[T any](t *testing.T) {
 	t.Parallel()
 
 	// This is our best-effort attempt to generate a random slice of values.
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		original := sliceWrapper[T]{}
-		faker := gofakeit.New(Seed + int64(i))
+		faker := gofakeit.New(Seed + uint64(i))
 
 		require.NoError(t, faker.Struct(&original))
 
@@ -179,7 +179,6 @@ func TestSliceEncodingResult(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, test.fn)
 	}
 }
@@ -262,7 +261,6 @@ func TestSmallIntegers(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test
 		t.Run(test.name, test.fn)
 	}
 }

@@ -30,6 +30,7 @@ func TestByteOverwrite(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded Pair[[]byte, []byte]
+
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 
@@ -223,6 +224,7 @@ func TestStringKey(t *testing.T) {
 	assert.Equal(t, 16, len(customEncoded))
 
 	var customDecoded customType
+
 	err = protoenc.Unmarshal(customEncoded, &customDecoded)
 	require.NoError(t, err)
 
@@ -241,6 +243,7 @@ func TestInternalStructMarshal(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded Pair[Sequence[string], int]
+
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 
@@ -260,6 +263,7 @@ func TestInternalStructMarshalSlice(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded Pair[[]Sequence[string], int]
+
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 
@@ -273,6 +277,7 @@ func TestSequence(t *testing.T) {
 	require.NoError(t, err)
 
 	var decoded Sequence[string]
+
 	err = protoenc.Unmarshal(buf, &decoded)
 	require.NoError(t, err)
 

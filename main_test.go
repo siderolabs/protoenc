@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var Seed = time.Now().UnixNano()
+var Seed = uint64(time.Now().UnixNano())
 
 func TestMain(m *testing.M) {
 	fmt.Println("Seed:", Seed)

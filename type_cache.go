@@ -72,9 +72,9 @@ func structFields(typ reflect.Type) ([]FieldData, error) {
 		return nil, fmt.Errorf("%s is not a struct", typ)
 	}
 
-	var result []FieldData
+	result := make([]FieldData, 0, typ.NumField())
 
-	for i := 0; i < typ.NumField(); i++ {
+	for i := range typ.NumField() {
 		typField := typ.Field(i)
 
 		// Skipping private types
@@ -265,7 +265,7 @@ func validateStruct(typ reflect.Type) error {
 
 	hasExportedFields := false
 
-	for i := 0; i < typ.NumField(); i++ {
+	for i := range typ.NumField() {
 		field := typ.Field(i)
 
 		if isEmbeddedField(field) {
