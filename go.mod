@@ -3,10 +3,10 @@ module github.com/siderolabs/protoenc
 go 1.21.3
 
 require (
-	github.com/brianvoe/gofakeit/v6 v6.28.0
-	github.com/google/go-cmp v0.6.0
+	github.com/brianvoe/gofakeit/v7 v7.3.0
+	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.10.0
-	google.golang.org/protobuf v1.36.3
+	google.golang.org/protobuf v1.36.7
 )
 
 require (
