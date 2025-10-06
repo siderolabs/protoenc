@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-11-22T17:13:16Z by kres latest.
+# Generated on 2025-10-06T12:49:11Z by kres bc281a9.
 
 *
 !messages
@@ -24,3 +24,4 @@
 !go.mod
 !go.sum
 !.golangci.yml
+!hack/govulncheck.sh
