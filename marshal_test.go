@@ -302,10 +302,13 @@ func TestMarshalEmpty(t *testing.T) {
 	type Empty struct{}
 
 	buf := must(protoenc.Marshal(&Empty{}))(t)
-	require.Len(t, buf, 0)
+	require.Empty(t, buf)
 
 	buf = must(protoenc.Marshal(&Value[Empty]{}))(t)
-	require.Equal(t, []byte{0x0a, 0x00}, buf)
+	require.Empty(t, buf)
+
+	buf = must(protoenc.Marshal(&Value[Empty]{}, protoenc.WithMarshalZeroFields()))(t)
+	require.Equal(t, []byte{0xa, 0x0}, buf)
 }
 
 func TestEmbedding(t *testing.T) {

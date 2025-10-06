@@ -20,9 +20,24 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+// MarshalOptions configures the behavior of Marshal.
+type MarshalOptions struct {
+	MarshalZeroFields bool // if true, marshal fields with zero values
+}
+
+// MarshalOption is a function that configures MarshalOptions.
+type MarshalOption func(*MarshalOptions)
+
+// WithMarshalZeroFields configures Marshal to marshal fields with zero values.
+func WithMarshalZeroFields() MarshalOption {
+	return func(o *MarshalOptions) {
+		o.MarshalZeroFields = true
+	}
+}
+
 // Marshal a Go struct into protocol buffer format.
 // The caller must pass a pointer to the struct to encode.
-func Marshal(structPtr interface{}) (result []byte, err error) {
+func Marshal(structPtr interface{}, opts ...MarshalOption) (result []byte, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			e, ok := recovered.(error)
@@ -48,8 +63,15 @@ func Marshal(structPtr interface{}) (result []byte, err error) {
 		return bu.MarshalBinary()
 	}
 
+	var o MarshalOptions
+
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	m := marshaller{
-		buf: make([]byte, 0, 32),
+		buf:  make([]byte, 0, 32),
+		opts: o,
 	}
 
 	val := reflect.ValueOf(structPtr)
@@ -63,7 +85,8 @@ func Marshal(structPtr interface{}) (result []byte, err error) {
 }
 
 type marshaller struct {
-	buf []byte
+	buf  []byte
+	opts MarshalOptions
 }
 
 func (m *marshaller) Bytes() []byte {
@@ -106,7 +129,9 @@ func (m *marshaller) encodeFields(val reflect.Value, fieldsData []FieldData) {
 		field := fieldByIndex(val, fieldData)
 
 		if field.IsValid() {
-			m.encodeValue(fieldData.Num, field)
+			if m.opts.MarshalZeroFields || !field.IsZero() {
+				m.encodeValue(fieldData.Num, field)
+			}
 
 			noneEncoded = false
 		}
@@ -190,7 +215,9 @@ func (m *marshaller) encodeValue(num protowire.Number, val reflect.Value) {
 
 			b = result
 		} else {
-			inner := marshaller{}
+			inner := marshaller{
+				opts: m.opts,
+			}
 			inner.encodeStruct(val)
 			b = inner.Bytes()
 		}
@@ -331,7 +358,9 @@ func asBinaryMarshaler(val reflect.Value) (encoding.BinaryMarshaler, bool) {
 
 func (m *marshaller) encodeSlice(key protowire.Number, val reflect.Value) {
 	sliceLen := val.Len()
-	result := marshaller{}
+	result := marshaller{
+		opts: m.opts,
+	}
 
 	typ := val.Type()
 	if typ.Elem() == typeByte {
@@ -394,7 +423,9 @@ func (m *marshaller) encodeSlice(key protowire.Number, val reflect.Value) {
 func (m *marshaller) sliceReflect(key protowire.Number, val reflect.Value) {
 	sliceLen := val.Len()
 	elem := val.Type().Elem()
-	result := marshaller{}
+	result := marshaller{
+		opts: m.opts,
+	}
 
 	switch elem.Kind() { //nolint:exhaustive
 	case reflect.Int8, reflect.Int16:
@@ -462,7 +493,9 @@ func (m *marshaller) encodeMap(key protowire.Number, mpval reflect.Value) {
 			panic("error: map has nil element")
 		}
 
-		inner := marshaller{}
+		inner := marshaller{
+			opts: m.opts,
+		}
 		inner.encodeValue(1, mkey)
 		inner.encodeValue(2, mval)
 
